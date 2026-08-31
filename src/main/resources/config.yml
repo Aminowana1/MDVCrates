@@ -1,0 +1,109 @@
+# ==========================================================
+# MDVCrates 1.0.0
+# ==========================================================
+
+settings:
+  interaction-hand: MAIN_HAND
+  require-free-slot: true
+  prevent-double-chests: true
+  max-open-distance: 6.0
+  deliver-pending-on-join-delay-ticks: 20
+
+editor:
+  size: 54
+  reward-slots: 45
+  default-new-item-weight: 10.0
+  show-command-rewards: true
+
+idle-engine:
+  tick-interval: 2
+  max-view-distance: 24.0
+
+# Si una crate no tiene su bloque animations:, usa este preset.
+default-animations:
+  idle:
+    enabled: true
+
+    rings:
+      ring1:
+        enabled: true
+        particle: END_ROD
+        radius: 1.05
+        y-offset: 0.55
+        points: 18
+        count: 1
+        spread: 0.0
+        extra: 0.0
+        phase-speed-deg-per-tick: 2.5
+        tilt-deg:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        plane-rotation-deg-per-tick:
+          x: 0.25
+          y: 0.0
+          z: 0.45
+
+    orbits:
+      orbit1:
+        enabled: true
+        particle: ENCHANT
+        orbiters: 3
+        radius: 1.30
+        y-offset: 0.60
+        count: 1
+        spread: 0.0
+        extra: 0.0
+        angular-speed-deg-per-tick: 4.0
+        random-plane: true
+        tilt-deg:
+          x: 25.0
+          y: 0.0
+          z: 35.0
+        plane-rotation-deg-per-tick:
+          x: 0.15
+          y: 0.20
+          z: 0.10
+
+  opening:
+    suction:
+      enabled: true
+      particle: SOUL_FIRE_FLAME
+      radius: 1.50
+      center-y-offset: 0.55
+      motes-per-tick: 2
+      travel-ticks-min: 8
+      travel-ticks-max: 14
+      count: 1
+      spread: 0.0
+      extra: 0.0
+
+    roll:
+      steps: 18
+      initial-delay-ticks: 2
+      final-delay-ticks: 12
+      curve: EASE_IN_QUAD
+      display-offset:
+        x: 0.5
+        y: 1.45
+        z: 0.5
+      name-offset-y: 0.55
+      show-name: true
+      display-scale: 0.85
+      spin-deg-per-tick: 10.0
+      change-sound: BLOCK_NOTE_BLOCK_HAT
+      change-sound-volume: 0.55
+      change-sound-pitch: 1.55
+
+    finish:
+      pause-before-burst-ticks: 8
+      rise-ticks: 12
+      rise-height: 0.90
+      burst-particle: EXPLOSION
+      burst-count: 1
+      burst-spread: 0.0
+      burst-extra: 0.0
+      reward-sound: ENTITY_PLAYER_LEVELUP
+      reward-sound-volume: 1.0
+      reward-sound-pitch: 1.15
+      close-delay-ticks: 4

@@ -1,0 +1,48 @@
+# ==========================================================
+# MDVCrates - Definiciones de crates
+# ==========================================================
+#
+# Las recompensas MMOItems se guardan por TYPE + ID y se regeneran desde
+# MMOItems cada vez que deben mostrarse/entregarse.
+#
+# Los demás ítems custom añadidos desde /mdvcrates editor <crate>
+# se guardan como snapshot binario Base64 del ItemStack completo.
+#
+# COMMAND se edita únicamente aquí. preview representa el premio en la
+# ruleta y, si editor.show-command-rewards=true, también en el editor.
+#
+
+crates:
+  caja1:
+    enabled: false
+    display-name: "&6&lCaja de Ejemplo"
+    block-material: CHEST
+
+    key:
+      mmoitems-type: LLAVES
+      mmoitems-id: LLAVE_CAJA1
+
+    locations: []
+
+    rewards:
+      ejemplo_mmoitem:
+        type: MMOITEM
+        weight: 50.0
+        amount: 1
+        mmoitems-type: MATERIAL
+        mmoitems-id: PIEDRA_LUNAR
+
+      ejemplo_comando:
+        type: COMMAND
+        weight: 5.0
+        name: "&6Rango especial"
+        commands:
+          - "lp user {player} parent addtemp vip 7d"
+        preview:
+          material: NETHER_STAR
+          name: "&6&lRango especial"
+          lore:
+            - "&7Recompensa ejecutada por consola."
+
+    # Puedes copiar default-animations de config.yml aquí y modificarlo
+    # para que esta crate tenga partículas/velocidades propias.

@@ -1,0 +1,19 @@
+name: MDVCrates
+version: '1.0.0'
+main: com.mdvcraft.mdvcrates.MDVCratesPlugin
+api-version: '1.21'
+authors: [MDVCRAFT]
+description: Crates físicas con MMOItems, recompensas custom, comandos y animaciones.
+softdepend: [MMOItems, MythicLib, PlaceholderAPI]
+
+commands:
+  mdvcrates:
+    description: Administración de MDVCrates.
+    usage: /mdvcrates
+    aliases: [mdvc]
+
+permissions:
+  mdvcrates.use:
+    default: true
+  mdvcrates.admin:
+    default: op
