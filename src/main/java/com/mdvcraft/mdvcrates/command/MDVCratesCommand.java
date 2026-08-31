@@ -114,7 +114,7 @@ public final class MDVCratesCommand implements CommandExecutor, TabCompleter {
     }
 
     private void help(CommandSender sender) {
-        sender.sendMessage(Text.color("&6&lMDVCrates 1.1.1"));
+        sender.sendMessage(Text.color("&6&lMDVCrates 1.1.2"));
         sender.sendMessage(Text.color("&e/mdvcrates create <id> &7- crea config"));
         sender.sendMessage(Text.color("&e/mdvcrates editor <id> &7- editor de recompensas"));
         sender.sendMessage(Text.color("&e/mdvcrates place <id> &7- coloca sobre el bloque mirado"));

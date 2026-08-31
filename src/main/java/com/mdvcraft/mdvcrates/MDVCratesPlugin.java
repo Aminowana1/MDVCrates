@@ -39,7 +39,7 @@ public final class MDVCratesPlugin extends JavaPlugin {
         rewardService = new RewardService(this, mmoItemsHook);
         pendingRewardService = new PendingRewardService(this, rewardService);
         crateManager = new CrateManager(this, crateRepository);
-        crateManager.sanitizePhysicalCrates();
+        crateManager.refreshLoadedPhysicalCrates();
         openingManager = new OpeningManager(this, mmoItemsHook, rewardService, pendingRewardService, messages);
         editorManager = new EditorManager(this, mmoItemsHook);
         rewardViewerManager = new RewardViewerManager(this);
@@ -51,13 +51,14 @@ public final class MDVCratesPlugin extends JavaPlugin {
         pm.registerEvents(new EditorListener(this), this);
         pm.registerEvents(new PlayerSafetyListener(this), this);
         pm.registerEvents(new RewardViewerListener(this), this);
+        pm.registerEvents(new CratePlacementSyncListener(this), this);
 
         MDVCratesCommand command = new MDVCratesCommand(this);
         Objects.requireNonNull(getCommand("mdvcrates")).setExecutor(command);
         Objects.requireNonNull(getCommand("mdvcrates")).setTabCompleter(command);
 
         idleAnimationManager.start();
-        getLogger().info("MDVCrates 1.1.1 habilitado. Crates cargadas: " + crateRepository.all().size());
+        getLogger().info("MDVCrates 1.1.2 habilitado. Crates cargadas: " + crateRepository.all().size());
     }
 
     @Override
@@ -76,8 +77,9 @@ public final class MDVCratesPlugin extends JavaPlugin {
         mmoItemsHook.reload();
         crateRepository.reload();
         crateManager.rebuildIndex();
-        crateManager.sanitizePhysicalCrates();
+        int refreshed = crateManager.refreshLoadedPhysicalCrates();
         idleAnimationManager.start();
+        getLogger().info("Reload aplicado a " + refreshed + " crate(s) colocada(s) en chunks cargados. Las demás se sincronizarán al cargar su chunk.");
     }
 
     private void cleanupOldVisuals() {

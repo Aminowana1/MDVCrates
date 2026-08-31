@@ -7,6 +7,7 @@ import com.mdvcraft.mdvcrates.model.CrateDefinition;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
 import org.bukkit.entity.Player;
 
@@ -138,12 +139,85 @@ public final class CrateManager {
     }
 
     public void sanitizePhysicalCrates() {
+        refreshLoadedPhysicalCrates();
+    }
+
+    /**
+     * Aplica la definición actual a todas las crates colocadas cuyos chunks ya
+     * están cargados. No fuerza carga de chunks. Esto hace que /mdvcrates reload
+     * actualice material/config visual sin tener que volver a colocarlas.
+     */
+    public int refreshLoadedPhysicalCrates() {
+        int refreshed = 0;
         for (Map.Entry<BlockKey, String> entry : locationIndex.entrySet()) {
             CrateDefinition crate = repository.get(entry.getValue());
             Block block = resolve(entry.getKey());
-            if (crate == null || block == null || block.getType() != crate.blockMaterial()) continue;
-            clearContainer(block);
+            if (crate == null || block == null) continue;
+            if (syncPhysicalBlock(block, crate)) refreshed++;
         }
+        return refreshed;
+    }
+
+    /**
+     * Cuando un chunk vuelve a cargar, sincroniza las crates registradas dentro
+     * de él con la definición vigente, incluidas modificaciones hechas durante
+     * un reload mientras ese chunk estaba descargado.
+     */
+    public int refreshChunk(Chunk chunk) {
+        if (chunk == null) return 0;
+        int refreshed = 0;
+        String worldName = chunk.getWorld().getName();
+        int cx = chunk.getX();
+        int cz = chunk.getZ();
+
+        for (Map.Entry<BlockKey, String> entry : locationIndex.entrySet()) {
+            BlockKey key = entry.getKey();
+            if (!key.world().equals(worldName) || (key.x() >> 4) != cx || (key.z() >> 4) != cz) continue;
+            CrateDefinition crate = repository.get(entry.getValue());
+            if (crate == null) continue;
+            Block block = chunk.getWorld().getBlockAt(key.x(), key.y(), key.z());
+            if (syncPhysicalBlock(block, crate)) refreshed++;
+        }
+        return refreshed;
+    }
+
+    private boolean syncPhysicalBlock(Block block, CrateDefinition crate) {
+        Material wanted = crate.blockMaterial();
+        Material current = block.getType();
+
+        // Nunca pisa un bloque arbitrario que no sea una crate soportada. AIR se
+        // permite para recuperar una colocación registrada que haya quedado vacía.
+        if (current != wanted && current != Material.AIR && !com.mdvcraft.mdvcrates.util.CrateBlocks.isSupported(current)) {
+            plugin.getLogger().warning("No se pudo sincronizar crate '" + crate.id() + "' en "
+                    + block.getWorld().getName() + " " + block.getX() + "," + block.getY() + "," + block.getZ()
+                    + ": el bloque está ocupado por " + current + ".");
+            return false;
+        }
+
+        if (current != wanted) {
+            BlockData oldData = block.getBlockData();
+            BlockFace oldFacing = oldData instanceof Directional oldDirectional ? oldDirectional.getFacing() : null;
+            boolean preserveFacing = sameFacingFamily(current, wanted);
+
+            block.setType(wanted, false);
+            if (preserveFacing && oldFacing != null && block.getBlockData() instanceof Directional directional
+                    && directional.getFaces().contains(oldFacing)) {
+                directional.setFacing(oldFacing);
+                block.setBlockData(directional, false);
+            }
+        }
+
+        clearContainer(block);
+        return true;
+    }
+
+    private boolean sameFacingFamily(Material a, Material b) {
+        if (a == null || b == null) return false;
+        boolean aChest = a == Material.CHEST || a == Material.TRAPPED_CHEST || a == Material.ENDER_CHEST;
+        boolean bChest = b == Material.CHEST || b == Material.TRAPPED_CHEST || b == Material.ENDER_CHEST;
+        boolean aShulker = a == Material.SHULKER_BOX || a.name().endsWith("_SHULKER_BOX");
+        boolean bShulker = b == Material.SHULKER_BOX || b.name().endsWith("_SHULKER_BOX");
+        return (aChest && bChest) || (aShulker && bShulker);
     }
 
 

@@ -21,19 +21,31 @@ public final class CrateRepository {
     private final MDVCratesPlugin plugin;
     private final MMOItemsHook mmoItems;
     private final File file;
+    private final File placementsFile;
     private YamlConfiguration yaml;
+    private YamlConfiguration placementsYaml;
     private final Map<String, CrateDefinition> crates = new LinkedHashMap<>();
 
     public CrateRepository(MDVCratesPlugin plugin, MMOItemsHook mmoItems) {
         this.plugin = plugin;
         this.mmoItems = mmoItems;
         this.file = new File(plugin.getDataFolder(), "crates.yml");
+        this.placementsFile = new File(plugin.getDataFolder(), "placements.yml");
         reload();
     }
 
-    public void reload() {
+    public synchronized void reload() {
         if (!file.exists()) plugin.saveResource("crates.yml", false);
+        if (!placementsFile.exists()) plugin.saveResource("placements.yml", false);
+
         yaml = YamlConfiguration.loadConfiguration(file);
+        placementsYaml = YamlConfiguration.loadConfiguration(placementsFile);
+
+        // 1.1.2+: las ubicaciones físicas viven fuera de crates.yml.
+        // Esto permite reemplazar/editar una definición y hacer /mdvcrates reload
+        // sin tener que volver a colocar las crates que ya existen en el mundo.
+        migrateLegacyLocations();
+
         crates.clear();
         ConfigurationSection root = yaml.getConfigurationSection("crates");
         if (root == null) return;
@@ -65,7 +77,6 @@ public final class CrateRepository {
         yaml.set(path + ".block-material", "CHEST");
         yaml.set(path + ".key.mmoitems-type", "LLAVE");
         yaml.set(path + ".key.mmoitems-id", "LLAVE_" + id.toUpperCase(Locale.ROOT));
-        yaml.set(path + ".locations", new ArrayList<String>());
         yaml.set(path + ".viewer.show-percentages", true);
         yaml.set(path + ".name-display.enabled", true);
         yaml.set(path + ".name-display.text", "{display-name}");
@@ -75,14 +86,16 @@ public final class CrateRepository {
         yaml.set(path + ".name-display.hide-during-opening", false);
         yaml.createSection(path + ".rewards");
         saveFile();
+        placementsYaml.set("placements." + id, new ArrayList<String>());
+        savePlacementsFile();
         reload();
         return true;
     }
 
     public synchronized void setLocations(String crateId, List<BlockKey> locations) {
         List<String> raw = locations.stream().map(BlockKey::serialize).toList();
-        yaml.set("crates." + crateId + ".locations", raw);
-        saveFile();
+        placementsYaml.set("placements." + crateId, raw);
+        savePlacementsFile();
         reload();
     }
 
@@ -145,11 +158,7 @@ public final class CrateRepository {
                 sec.getString("key.mmoitems-type", "LLAVE"),
                 sec.getString("key.mmoitems-id", "LLAVE_" + id.toUpperCase(Locale.ROOT)));
 
-        List<BlockKey> locations = new ArrayList<>();
-        for (String raw : sec.getStringList("locations")) {
-            BlockKey keyLoc = BlockKey.deserialize(raw);
-            if (keyLoc != null) locations.add(keyLoc);
-        }
+        List<BlockKey> locations = loadLocations(id);
 
         List<Reward> rewards = new ArrayList<>();
         ConfigurationSection rewardsSec = sec.getConfigurationSection("rewards");
@@ -224,6 +233,48 @@ public final class CrateRepository {
             item.setItemMeta(meta);
         }
         return item;
+    }
+
+    private List<BlockKey> loadLocations(String crateId) {
+        List<BlockKey> locations = new ArrayList<>();
+        for (String raw : placementsYaml.getStringList("placements." + crateId)) {
+            BlockKey keyLoc = BlockKey.deserialize(raw);
+            if (keyLoc != null) locations.add(keyLoc);
+        }
+        return locations;
+    }
+
+    /**
+     * Migra una sola vez las listas locations: antiguas de crates.yml.
+     * Si placements.yml ya conoce una crate, incluso con lista vacía, esa
+     * entrada manda y locations: deja de afectar a las colocaciones reales.
+     */
+    private void migrateLegacyLocations() {
+        ConfigurationSection root = yaml.getConfigurationSection("crates");
+        if (root == null) return;
+
+        boolean changed = false;
+        for (String id : root.getKeys(false)) {
+            String placementPath = "placements." + id;
+            if (placementsYaml.contains(placementPath)) continue;
+
+            ConfigurationSection sec = root.getConfigurationSection(id);
+            List<String> legacy = sec == null ? List.of() : sec.getStringList("locations");
+            placementsYaml.set(placementPath, new ArrayList<>(legacy));
+            if (!legacy.isEmpty()) {
+                plugin.getLogger().info("Migradas " + legacy.size() + " ubicación(es) de la crate '" + id + "' a placements.yml.");
+            }
+            changed = true;
+        }
+        if (changed) savePlacementsFile();
+    }
+
+    private void savePlacementsFile() {
+        try {
+            placementsYaml.save(placementsFile);
+        } catch (IOException ex) {
+            plugin.getLogger().log(Level.SEVERE, "No se pudo guardar placements.yml", ex);
+        }
     }
 
     private void saveFile() {

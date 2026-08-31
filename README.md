@@ -1,10 +1,12 @@
-# MDVCrates 1.1.1
+# MDVCrates 1.1.2
 
 Plugin de crates físicas para Paper/Purpur 1.21.6, Java 21.
 
 ## Funciones principales
 
 - Crates físicas registradas por ubicación.
+- Las ubicaciones físicas se guardan aparte en `placements.yml`: puedes editar o reemplazar `crates.yml` y usar `/mdvcrates reload` sin volver a colocar las crates.
+- `/mdvcrates reload` refresca automáticamente las crates colocadas en chunks cargados; las de chunks descargados se sincronizan al cargarse, sin forzar chunks.
 - Bloques soportados: `CHEST`, `TRAPPED_CHEST`, `ENDER_CHEST`, `SHULKER_BOX` y todos los colores de shulker.
 - Llaves MMOItems verificadas por TYPE + ID.
 - Click derecho con la llave correcta: abre la crate.
@@ -138,7 +140,7 @@ name-display:
 - `/mdvcrates place <id>` coloca una instancia sobre el bloque que estás mirando.
 - `/mdvcrates remove` elimina la instancia física que estás mirando.
 - `/mdvcrates move <id>` mueve la instancia más cercana de ese ID al bloque sobre el que estás mirando.
-- `/mdvcrates reload` recarga configs y animaciones.
+- `/mdvcrates reload` recarga configs y actualiza automáticamente todas las instancias ya colocadas.
 - `/mdvcrates list` lista crates cargadas.
 
 Permiso admin: `mdvcrates.admin`.
@@ -169,4 +171,4 @@ También compila con Java 21 + Maven:
 mvn clean package
 ```
 
-El jar sale en `target/MDVCrates-1.1.1.jar`.
+El jar sale en `target/MDVCrates-1.1.2.jar`.

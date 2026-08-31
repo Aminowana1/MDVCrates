@@ -1,5 +1,5 @@
 # ==========================================================
-# MDVCrates 1.1.1 - Definiciones de crates
+# MDVCrates 1.1.2 - Definiciones de crates
 # ==========================================================
 #
 # block-material soportado:
@@ -55,7 +55,9 @@ crates:
       see-through: false
       hide-during-opening: false
 
-    locations: []
+    # Las ubicaciones físicas YA NO se guardan aquí.
+    # MDVCrates las conserva automáticamente en placements.yml para que puedas
+    # editar/reemplazar esta definición y usar /mdvcrates reload sin recolocar.
 
     rewards:
       ejemplo_mmoitem:
