@@ -10,6 +10,7 @@ public final class Reward {
     private final String id;
     private final RewardType type;
     private final double weight;
+    private final Double chance;
     private final int amount;
     private final String displayName;
     private final String mmoItemsType;
@@ -21,7 +22,8 @@ public final class Reward {
     private Reward(Builder b) {
         this.id = b.id;
         this.type = b.type;
-        this.weight = b.weight;
+        this.weight = Math.max(0, b.weight);
+        this.chance = b.chance == null ? null : Math.max(0, Math.min(100, b.chance));
         this.amount = Math.max(1, b.amount);
         this.displayName = b.displayName;
         this.mmoItemsType = b.mmoItemsType;
@@ -34,6 +36,8 @@ public final class Reward {
     public String id() { return id; }
     public RewardType type() { return type; }
     public double weight() { return weight; }
+    public Double chance() { return chance; }
+    public boolean hasExplicitChance() { return chance != null; }
     public int amount() { return amount; }
     public String displayName() { return displayName; }
     public String mmoItemsType() { return mmoItemsType; }
@@ -45,6 +49,7 @@ public final class Reward {
     public Builder toBuilder() {
         return builder(id, type)
                 .weight(weight)
+                .chance(chance)
                 .amount(amount)
                 .displayName(displayName)
                 .mmoItems(mmoItemsType, mmoItemsId)
@@ -61,6 +66,7 @@ public final class Reward {
         private final String id;
         private final RewardType type;
         private double weight = 1.0;
+        private Double chance;
         private int amount = 1;
         private String displayName;
         private String mmoItemsType;
@@ -75,6 +81,7 @@ public final class Reward {
         }
 
         public Builder weight(double weight) { this.weight = weight; return this; }
+        public Builder chance(Double chance) { this.chance = chance; return this; }
         public Builder amount(int amount) { this.amount = amount; return this; }
         public Builder displayName(String displayName) { this.displayName = displayName; return this; }
         public Builder mmoItems(String type, String id) { this.mmoItemsType = type; this.mmoItemsId = id; return this; }

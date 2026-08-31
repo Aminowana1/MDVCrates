@@ -34,7 +34,6 @@ public final class EditorManager {
         holder.bind(inv);
         EditorSession session = new EditorSession(crate.id(), inv);
 
-        double totalWeight = crate.rewards().stream().filter(r -> r.weight() > 0).mapToDouble(Reward::weight).sum();
         int slot = 0;
         for (Reward reward : crate.rewards()) {
             if (slot >= rewardSlots) break;
@@ -42,7 +41,7 @@ public final class EditorManager {
             ItemStack preview = plugin.rewardService().preview(reward);
             if (preview == null) continue;
             session.itemRewards().put(slot, reward);
-            inv.setItem(slot, decorate(preview, reward, totalWeight, false));
+            inv.setItem(slot, decorate(preview, crate, reward, false));
             slot++;
         }
 
@@ -52,7 +51,7 @@ public final class EditorManager {
                 if (reward.type() != RewardType.COMMAND) continue;
                 ItemStack preview = plugin.rewardService().preview(reward);
                 if (preview == null) preview = new ItemStack(Material.NETHER_STAR);
-                inv.setItem(slot, decorate(preview, reward, totalWeight, true));
+                inv.setItem(slot, decorate(preview, crate, reward, true));
                 session.commandSlots().add(slot);
                 slot++;
             }
@@ -99,7 +98,10 @@ public final class EditorManager {
                     .weight(weight).amount(amount).storedItem(stored).build();
         }
         session.itemRewards().put(free, reward);
-        session.inventory().setItem(free, decorate(original.clone(), reward, currentTotalWeight(session), false));
+        CrateDefinition crate = plugin.crateRepository().get(session.crateId());
+        ItemStack visual = identity != null ? plugin.rewardService().preview(reward) : original.clone();
+        if (visual == null) visual = original.clone();
+        session.inventory().setItem(free, decorate(visual, crate, reward, false));
         session.saved(false);
         plugin.messages().send(player, "editor-added");
         return true;
@@ -139,7 +141,7 @@ public final class EditorManager {
         sessions.remove(player.getUniqueId());
     }
 
-    private ItemStack decorate(ItemStack source, Reward reward, double totalWeight, boolean command) {
+    private ItemStack decorate(ItemStack source, CrateDefinition crate, Reward reward, boolean command) {
         ItemStack item = source.clone();
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return item;
@@ -148,8 +150,13 @@ public final class EditorManager {
         lore.add(Text.color(command ? "&6&l[COMMAND] &7Solo editable en crates.yml" : "&e&l[RECOMPENSA EDITABLE]"));
         lore.add(Text.color("&7Tipo: &f" + reward.type().name()));
         lore.add(Text.color("&7Peso: &e" + trim(reward.weight())));
-        double chance = totalWeight <= 0 ? 0 : reward.weight() * 100.0 / totalWeight;
-        lore.add(Text.color("&7Probabilidad aprox.: &a" + String.format(Locale.US, "%.2f", chance) + "%"));
+        if (reward.chance() != null) lore.add(Text.color("&7Chance configurado: &b" + trim(reward.chance()) + "%"));
+        if (reward.id() == null || reward.id().isBlank()) {
+            lore.add(Text.color("&7Probabilidad efectiva: &8se calcula al guardar"));
+        } else {
+            double chance = plugin.rewardService().probabilityPercent(crate, reward);
+            lore.add(Text.color("&7Probabilidad efectiva: &a" + String.format(Locale.US, "%.2f", chance) + "%"));
+        }
         if (reward.type() == RewardType.MMOITEM) {
             lore.add(Text.color("&7MMOItems: &b" + reward.mmoItemsType() + ":" + reward.mmoItemsId()));
         }
@@ -158,13 +165,6 @@ public final class EditorManager {
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
         item.setItemMeta(meta);
         return item;
-    }
-
-    private double currentTotalWeight(EditorSession session) {
-        CrateDefinition crate = plugin.crateRepository().get(session.crateId());
-        double commands = crate == null ? 0 : crate.rewards().stream()
-                .filter(r -> r.type() == RewardType.COMMAND).mapToDouble(Reward::weight).sum();
-        return commands + session.itemRewards().values().stream().mapToDouble(Reward::weight).sum();
     }
 
     private ItemStack button(Material mat, String name, List<String> lore) {

@@ -16,10 +16,13 @@ public final class CrateDefinition {
     private final List<BlockKey> locations;
     private final List<Reward> rewards;
     private final ConfigurationSection animationSection;
+    private final ConfigurationSection viewerSection;
+    private final ConfigurationSection nameDisplaySection;
 
     public CrateDefinition(String id, boolean enabled, String displayName, Material blockMaterial,
                            KeyDefinition key, List<BlockKey> locations, List<Reward> rewards,
-                           ConfigurationSection animationSection) {
+                           ConfigurationSection animationSection, ConfigurationSection viewerSection,
+                           ConfigurationSection nameDisplaySection) {
         this.id = id;
         this.enabled = enabled;
         this.displayName = displayName;
@@ -28,6 +31,8 @@ public final class CrateDefinition {
         this.locations = Collections.unmodifiableList(new ArrayList<>(locations));
         this.rewards = Collections.unmodifiableList(new ArrayList<>(rewards));
         this.animationSection = animationSection;
+        this.viewerSection = viewerSection;
+        this.nameDisplaySection = nameDisplaySection;
     }
 
     public String id() { return id; }
@@ -38,4 +43,6 @@ public final class CrateDefinition {
     public List<BlockKey> locations() { return locations; }
     public List<Reward> rewards() { return rewards; }
     public ConfigurationSection animationSection() { return animationSection; }
+    public ConfigurationSection viewerSection() { return viewerSection; }
+    public ConfigurationSection nameDisplaySection() { return nameDisplaySection; }
 }

@@ -38,6 +38,14 @@ public final class OpeningManager {
         return byPlayer.get(player.getUniqueId());
     }
 
+
+    public boolean hasCorrectKey(Player player, CrateDefinition crate) {
+        if (player == null || crate == null || !crate.key().isConfigured()) return false;
+        ItemStack hand = player.getInventory().getItemInMainHand();
+        return hand != null && hand.getType() != Material.AIR
+                && mmoItems.matches(hand, crate.key().mmoItemsType(), crate.key().mmoItemsId());
+    }
+
     public void tryOpen(Player player, Block block, CrateDefinition crate) {
         if (!player.hasPermission("mdvcrates.use")) {
             messages.send(player, "no-permission");
@@ -60,9 +68,7 @@ public final class OpeningManager {
             messages.send(player, "player-busy");
             return;
         }
-        ItemStack hand = player.getInventory().getItemInMainHand();
-        if (hand == null || hand.getType() == Material.AIR || !crate.key().isConfigured()
-                || !mmoItems.matches(hand, crate.key().mmoItemsType(), crate.key().mmoItemsId())) {
+        if (!hasCorrectKey(player, crate)) {
             messages.send(player, "wrong-key");
             return;
         }

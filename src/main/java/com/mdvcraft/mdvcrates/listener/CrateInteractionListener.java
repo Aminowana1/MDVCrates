@@ -22,10 +22,23 @@ public final class CrateInteractionListener implements Listener {
         CrateDefinition crate = plugin.crateManager().at(event.getClickedBlock());
         if (crate == null) return;
         event.setCancelled(true);
+        if (!crate.enabled()) {
+            plugin.messages().send(event.getPlayer(), "crate-disabled");
+            return;
+        }
 
         Action action = event.getAction();
         if (action != Action.RIGHT_CLICK_BLOCK && action != Action.LEFT_CLICK_BLOCK) return;
         if (event.getHand() != null && event.getHand() != EquipmentSlot.HAND) return;
+
+        // Click izquierdo: visualiza recompensas siempre, aunque el jugador no tenga llave
+        // o tenga una llave incorrecta en la mano. No consume llave y no exige slot libre.
+        if (action == Action.LEFT_CLICK_BLOCK) {
+            plugin.rewardViewerManager().open(event.getPlayer(), crate, 0);
+            return;
+        }
+
+        // Click derecho: apertura real.
         plugin.openingManager().tryOpen(event.getPlayer(), event.getClickedBlock(), crate);
     }
 }

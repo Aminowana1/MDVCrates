@@ -263,7 +263,7 @@ public final class OpeningSession {
         if (reward == null) return;
         ItemStack preview = rewards.preview(reward);
         if (preview != null && itemDisplay != null) itemDisplay.setItemStack(preview);
-        if (textDisplay != null) textDisplay.setText(rewards.displayName(reward));
+        if (textDisplay != null) textDisplay.setText(rewards.displayNameWithAmount(reward));
     }
 
     private void spinAndBob() {
@@ -291,17 +291,26 @@ public final class OpeningSession {
 
     private void tickSuction() {
         if (!bool("suction.enabled", true)) return;
-        int perTick = Math.max(0, integer("suction.motes-per-tick", 2));
+        int interval = Math.max(1, integer("suction.spawn-interval-ticks", 1));
+        int perSpawn;
+        if (opening != null && opening.contains("suction.motes-per-spawn")) {
+            perSpawn = Math.max(0, integer("suction.motes-per-spawn", 1));
+        } else {
+            // Compatibilidad con 1.0.0.
+            perSpawn = Math.max(0, integer("suction.motes-per-tick", 2));
+        }
         double radius = dbl("suction.radius", 1.5);
         int minLife = Math.max(2, integer("suction.travel-ticks-min", 8));
         int maxLife = Math.max(minLife, integer("suction.travel-ticks-max", 14));
-        for (int i = 0; i < perTick; i++) {
-            double u = ThreadLocalRandom.current().nextDouble(-1.0, 1.0);
-            double theta = ThreadLocalRandom.current().nextDouble(Math.PI * 2.0);
-            double rxy = Math.sqrt(1 - u * u);
-            Vector start = new Vector(Math.cos(theta) * rxy, u, Math.sin(theta) * rxy).multiply(radius);
-            int life = ThreadLocalRandom.current().nextInt(minLife, maxLife + 1);
-            motes.add(new SuctionMote(start, life));
+        if (tick % interval == 0) {
+            for (int i = 0; i < perSpawn; i++) {
+                double u = ThreadLocalRandom.current().nextDouble(-1.0, 1.0);
+                double theta = ThreadLocalRandom.current().nextDouble(Math.PI * 2.0);
+                double rxy = Math.sqrt(1 - u * u);
+                Vector start = new Vector(Math.cos(theta) * rxy, u, Math.sin(theta) * rxy).multiply(radius);
+                int life = ThreadLocalRandom.current().nextInt(minLife, maxLife + 1);
+                motes.add(new SuctionMote(start, life));
+            }
         }
 
         ParticleSpec particle = particle("suction", "SOUL_FIRE_FLAME");

@@ -71,7 +71,7 @@ public final class CrateManager {
             return false;
         }
         destination.setType(crate.blockMaterial(), false);
-        if (destination.getBlockData() instanceof Directional directional) {
+        if (shouldFacePlayer(crate.blockMaterial()) && destination.getBlockData() instanceof Directional directional) {
             BlockFace facing = player.getFacing().getOppositeFace();
             if (directional.getFaces().contains(facing)) {
                 directional.setFacing(facing);
@@ -117,7 +117,7 @@ public final class CrateManager {
         Block old = resolve(nearest);
         if (old != null) old.setType(Material.AIR, false);
         destination.setType(crate.blockMaterial(), false);
-        if (destination.getBlockData() instanceof Directional directional) {
+        if (shouldFacePlayer(crate.blockMaterial()) && destination.getBlockData() instanceof Directional directional) {
             BlockFace facing = player.getFacing().getOppositeFace();
             if (directional.getFaces().contains(facing)) {
                 directional.setFacing(facing);
@@ -144,6 +144,11 @@ public final class CrateManager {
             if (crate == null || block == null || block.getType() != crate.blockMaterial()) continue;
             clearContainer(block);
         }
+    }
+
+
+    private boolean shouldFacePlayer(Material material) {
+        return material == Material.CHEST || material == Material.TRAPPED_CHEST || material == Material.ENDER_CHEST;
     }
 
     private boolean wouldMakeDoubleChest(Block block, Material material) {

@@ -25,7 +25,8 @@ public final class RewardService {
     public List<Reward> validRewards(CrateDefinition crate) {
         List<Reward> valid = new ArrayList<>();
         for (Reward reward : crate.rewards()) {
-            if (reward.weight() <= 0) continue;
+            boolean selectable = reward.hasExplicitChance() ? reward.chance() > 0 : reward.weight() > 0;
+            if (!selectable) continue;
             if (reward.type() == RewardType.COMMAND) {
                 if (!reward.commands().isEmpty()) valid.add(reward);
             } else if (preview(reward) != null) {
@@ -35,29 +36,100 @@ public final class RewardService {
         return valid;
     }
 
+    /**
+     * Calcula las probabilidades efectivas de la crate.
+     *
+     * Reglas:
+     * - Sin chance explícito: comportamiento clásico por weight.
+     * - chance explícito <= 100: reserva exactamente ese porcentaje; el porcentaje
+     *   restante se reparte entre rewards sin chance usando weight.
+     * - chance explícito > 100: se normalizan los chance a 100 y los rewards solo
+     *   por weight quedan en 0.
+     * - Si todos usan chance pero suman menos de 100, se normalizan entre ellos para
+     *   garantizar que cada apertura siempre tenga una recompensa.
+     */
+    public Map<String, Double> probabilities(CrateDefinition crate) {
+        List<Reward> valid = validRewards(crate);
+        LinkedHashMap<String, Double> out = new LinkedHashMap<>();
+        if (valid.isEmpty()) return out;
+
+        List<Reward> explicit = valid.stream().filter(Reward::hasExplicitChance).toList();
+        List<Reward> weighted = valid.stream().filter(r -> !r.hasExplicitChance()).toList();
+
+        if (explicit.isEmpty()) {
+            distributeByWeight(weighted, 100.0, out);
+            return out;
+        }
+
+        double explicitTotal = explicit.stream().mapToDouble(r -> r.chance()).sum();
+        if (explicitTotal >= 100.0) {
+            if (explicitTotal <= 0) return out;
+            for (Reward reward : explicit) out.put(reward.id(), reward.chance() * 100.0 / explicitTotal);
+            for (Reward reward : weighted) out.put(reward.id(), 0.0);
+            return out;
+        }
+
+        if (!weighted.isEmpty()) {
+            for (Reward reward : explicit) out.put(reward.id(), reward.chance());
+            distributeByWeight(weighted, 100.0 - explicitTotal, out);
+            return out;
+        }
+
+        // Solo hay chance explícito y no suma 100. Se normaliza para evitar aperturas vacías.
+        if (explicitTotal > 0) {
+            for (Reward reward : explicit) out.put(reward.id(), reward.chance() * 100.0 / explicitTotal);
+        }
+        return out;
+    }
+
+    private void distributeByWeight(List<Reward> rewards, double percentPool, Map<String, Double> out) {
+        double totalWeight = rewards.stream().mapToDouble(Reward::weight).sum();
+        if (totalWeight <= 0) {
+            for (Reward reward : rewards) out.put(reward.id(), 0.0);
+            return;
+        }
+        for (Reward reward : rewards) out.put(reward.id(), percentPool * reward.weight() / totalWeight);
+    }
+
+    public double probabilityPercent(CrateDefinition crate, Reward reward) {
+        if (crate == null || reward == null) return 0;
+        return probabilities(crate).getOrDefault(reward.id(), 0.0);
+    }
+
     public Reward select(CrateDefinition crate) {
         List<Reward> valid = validRewards(crate);
-        double total = valid.stream().mapToDouble(Reward::weight).sum();
-        if (valid.isEmpty() || total <= 0) return null;
+        if (valid.isEmpty()) return null;
+        Map<String, Double> chances = probabilities(crate);
+        double total = valid.stream().mapToDouble(r -> chances.getOrDefault(r.id(), 0.0)).sum();
+        if (total <= 0) return null;
+
         double roll = ThreadLocalRandom.current().nextDouble(total);
         double cursor = 0;
         for (Reward reward : valid) {
-            cursor += reward.weight();
+            cursor += chances.getOrDefault(reward.id(), 0.0);
             if (roll < cursor) return reward;
         }
         return valid.get(valid.size() - 1);
     }
 
     public Reward randomVisual(CrateDefinition crate) {
-        List<Reward> valid = validRewards(crate);
+        Map<String, Double> chances = probabilities(crate);
+        List<Reward> valid = validRewards(crate).stream()
+                .filter(r -> chances.getOrDefault(r.id(), 0.0) > 0.0000001)
+                .toList();
         if (valid.isEmpty()) return null;
         return valid.get(ThreadLocalRandom.current().nextInt(valid.size()));
     }
 
+    /**
+     * Preview limpio para menús/ruleta. Para MMOItems se intenta usar el build de
+     * display de MMOItems, que evita arrastrar prefijos/sufijos/modificadores de una
+     * copia usada como "Gastado ...". La entrega real sigue usando getItem normal.
+     */
     public ItemStack preview(Reward reward) {
         if (reward == null) return null;
         return switch (reward.type()) {
-            case MMOITEM -> mmoItems.getItem(reward.mmoItemsType(), reward.mmoItemsId(), Math.min(reward.amount(), 64));
+            case MMOITEM -> mmoItems.getPreviewItem(reward.mmoItemsType(), reward.mmoItemsId(), Math.min(reward.amount(), 64));
             case ITEM -> {
                 ItemStack item = reward.storedItem();
                 if (item != null) item.setAmount(Math.min(reward.amount(), Math.max(1, item.getMaxStackSize())));
@@ -71,6 +143,11 @@ public final class RewardService {
         if (reward.displayName() != null && !reward.displayName().isBlank()) return Text.color(reward.displayName());
         ItemStack preview = preview(reward);
         return preview == null ? reward.id() : Text.itemName(preview);
+    }
+
+    public String displayNameWithAmount(Reward reward) {
+        String name = displayName(reward);
+        return reward.amount() > 1 ? name + Text.color(" &ax" + reward.amount()) : name;
     }
 
     public PendingReward snapshot(String crateId, Reward reward, int reservedSlot) {
@@ -92,6 +169,8 @@ public final class RewardService {
 
         ItemStack base;
         if (reward.type() == RewardType.MMOITEM) {
+            // IMPORTANTE: entrega normal, no preview. Conserva el sistema aleatorio
+            // de modifiers/tier/calidad configurado en MMOItems.
             base = mmoItems.getItem(reward.mmoItemsType(), reward.mmoItemsId(), 1);
         } else {
             base = reward.item();

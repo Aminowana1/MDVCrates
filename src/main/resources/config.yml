@@ -1,5 +1,5 @@
 # ==========================================================
-# MDVCrates 1.0.0
+# MDVCrates 1.1.1
 # ==========================================================
 
 settings:
@@ -16,21 +16,50 @@ editor:
   show-command-rewards: true
 
 idle-engine:
-  tick-interval: 2
+  # El motor puede correr cada tick. Cada Ring/Orbit/Random Point tiene además
+  # su propio interval-ticks para bajar individualmente la frecuencia.
+  tick-interval: 1
   max-view-distance: 24.0
+
+# Se usa si la crate no define viewer: propio.
+default-viewer:
+  title: "&8Recompensas: {display-name}"
+  show-percentages: true
+
+# Holograma/nombre visible encima de cada crate.
+# Puede sobrescribirse por crate con name-display:.
+default-name-display:
+  enabled: true
+  text: "{display-name}"
+  offset:
+    x: 0.5
+    y: 1.85
+    z: 0.5
+  billboard: CENTER
+  shadowed: true
+  see-through: false
+  default-background: false
+  line-width: 200
+  view-range: 1.0
+  hide-during-opening: false
 
 # Si una crate no tiene su bloque animations:, usa este preset.
 default-animations:
   idle:
     enabled: true
 
+    # Los idle NO se apagan durante opening.
     rings:
       ring1:
         enabled: true
         particle: END_ROD
+        # Frecuencia propia del efecto.
+        interval-ticks: 2
         radius: 1.05
         y-offset: 0.55
+        # Puntos dibujados del anillo cada ejecución.
         points: 18
+        # Cantidad de partículas Bukkit por cada punto.
         count: 1
         spread: 0.0
         extra: 0.0
@@ -48,6 +77,8 @@ default-animations:
       orbit1:
         enabled: true
         particle: ENCHANT
+        interval-ticks: 2
+        # Cantidad de "lunas" distribuidas en la órbita.
         orbiters: 3
         radius: 1.30
         y-offset: 0.60
@@ -65,15 +96,42 @@ default-animations:
           y: 0.20
           z: 0.10
 
+    # Nuevo efecto 1.1.0: partículas en ubicaciones aleatorias alrededor
+    # de la crate. Se pueden declarar tantos grupos como quieras.
+    random-points:
+      ambient1:
+        enabled: true
+        particle: SOUL_FIRE_FLAME
+        interval-ticks: 5
+        # Cuántas ubicaciones aleatorias se generan en cada intervalo.
+        points-per-spawn: 1
+        # SPHERE o CYLINDER.
+        shape: SPHERE
+        radius: 1.45
+        vertical-radius: 0.85
+        center-y-offset: 0.45
+        # true = solamente sobre la superficie del volumen.
+        surface-only: false
+        # Partículas Bukkit en cada ubicación aleatoria.
+        count: 1
+        spread: 0.0
+        extra: 0.0
+
   opening:
     suction:
       enabled: true
       particle: SOUL_FIRE_FLAME
       radius: 1.50
       center-y-offset: 0.55
-      motes-per-tick: 2
+
+      # 1 = cada tick, 2 = cada 2 ticks, 4 = cada 4 ticks, etc.
+      spawn-interval-ticks: 3
+      # Cuántos motes nuevos nacen CADA intervalo.
+      motes-per-spawn: 1
+
       travel-ticks-min: 8
       travel-ticks-max: 14
+      # Cantidad de partículas Bukkit dibujadas por mote/posición.
       count: 1
       spread: 0.0
       extra: 0.0

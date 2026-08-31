@@ -8,6 +8,7 @@ import com.mdvcraft.mdvcrates.editor.EditorManager;
 import com.mdvcraft.mdvcrates.hook.MMOItemsHook;
 import com.mdvcraft.mdvcrates.listener.*;
 import com.mdvcraft.mdvcrates.service.*;
+import com.mdvcraft.mdvcrates.viewer.RewardViewerManager;
 import org.bukkit.World;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.TextDisplay;
@@ -25,6 +26,7 @@ public final class MDVCratesPlugin extends JavaPlugin {
     private OpeningManager openingManager;
     private EditorManager editorManager;
     private IdleAnimationManager idleAnimationManager;
+    private RewardViewerManager rewardViewerManager;
 
     @Override
     public void onEnable() {
@@ -40,6 +42,7 @@ public final class MDVCratesPlugin extends JavaPlugin {
         crateManager.sanitizePhysicalCrates();
         openingManager = new OpeningManager(this, mmoItemsHook, rewardService, pendingRewardService, messages);
         editorManager = new EditorManager(this, mmoItemsHook);
+        rewardViewerManager = new RewardViewerManager(this);
         idleAnimationManager = new IdleAnimationManager(this, crateManager, openingManager);
 
         var pm = getServer().getPluginManager();
@@ -47,13 +50,14 @@ public final class MDVCratesPlugin extends JavaPlugin {
         pm.registerEvents(new CrateProtectionListener(this), this);
         pm.registerEvents(new EditorListener(this), this);
         pm.registerEvents(new PlayerSafetyListener(this), this);
+        pm.registerEvents(new RewardViewerListener(this), this);
 
         MDVCratesCommand command = new MDVCratesCommand(this);
         Objects.requireNonNull(getCommand("mdvcrates")).setExecutor(command);
         Objects.requireNonNull(getCommand("mdvcrates")).setTabCompleter(command);
 
         idleAnimationManager.start();
-        getLogger().info("MDVCrates 1.0.0 habilitado. Crates cargadas: " + crateRepository.all().size());
+        getLogger().info("MDVCrates 1.1.1 habilitado. Crates cargadas: " + crateRepository.all().size());
     }
 
     @Override
@@ -95,4 +99,5 @@ public final class MDVCratesPlugin extends JavaPlugin {
     public CrateManager crateManager() { return crateManager; }
     public OpeningManager openingManager() { return openingManager; }
     public EditorManager editorManager() { return editorManager; }
+    public RewardViewerManager rewardViewerManager() { return rewardViewerManager; }
 }

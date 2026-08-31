@@ -1,15 +1,30 @@
 # ==========================================================
-# MDVCrates - Definiciones de crates
+# MDVCrates 1.1.1 - Definiciones de crates
 # ==========================================================
 #
-# Las recompensas MMOItems se guardan por TYPE + ID y se regeneran desde
-# MMOItems cada vez que deben mostrarse/entregarse.
+# block-material soportado:
+#   CHEST
+#   TRAPPED_CHEST
+#   ENDER_CHEST
+#   SHULKER_BOX y todos sus colores (RED_SHULKER_BOX, BLUE_SHULKER_BOX, etc.)
 #
-# Los demás ítems custom añadidos desde /mdvcrates editor <crate>
-# se guardan como snapshot binario Base64 del ItemStack completo.
+# MMOITEM:
+# - Se guarda únicamente TYPE + ID.
+# - La ruleta/visualizador usa un preview limpio generado desde el template.
+# - La entrega usa el build normal de MMOItems, conservando sus modifiers aleatorios.
 #
-# COMMAND se edita únicamente aquí. preview representa el premio en la
-# ruleta y, si editor.show-command-rewards=true, también en el editor.
+# ITEM:
+# - Cualquier ItemStack custom no-MMOItems se guarda completo en Base64.
+#
+# COMMAND:
+# - Solo se edita aquí. preview representa el premio visualmente.
+#
+# PROBABILIDAD:
+# - Solo weight: reparto clásico proporcional.
+# - chance: porcentaje explícito 0..100.
+# - Si algunos usan chance y otros solo weight, el porcentaje que quede libre
+#   se reparte entre los de weight.
+# - Si todos usan chance, lo recomendable es que sumen exactamente 100.
 #
 
 crates:
@@ -19,14 +34,34 @@ crates:
     block-material: CHEST
 
     key:
-      mmoitems-type: LLAVES
+      mmoitems-type: LLAVE
       mmoitems-id: LLAVE_CAJA1
+
+    # Click izquierdo con la llave correcta abre este visualizador.
+    viewer:
+      title: "&8Premios de {display-name}"
+      show-percentages: true
+
+    # Nombre/holograma de esta caja.
+    name-display:
+      enabled: true
+      text: "{display-name}"
+      offset:
+        x: 0.5
+        y: 1.85
+        z: 0.5
+      billboard: CENTER
+      shadowed: true
+      see-through: false
+      hide-during-opening: false
 
     locations: []
 
     rewards:
       ejemplo_mmoitem:
         type: MMOITEM
+        # chance directo. Si prefieres pesos, elimina chance.
+        chance: 90.0
         weight: 50.0
         amount: 1
         mmoitems-type: MATERIAL
@@ -34,7 +69,9 @@ crates:
 
       ejemplo_comando:
         type: COMMAND
+        chance: 10.0
         weight: 5.0
+        amount: 1
         name: "&6Rango especial"
         commands:
           - "lp user {player} parent addtemp vip 7d"

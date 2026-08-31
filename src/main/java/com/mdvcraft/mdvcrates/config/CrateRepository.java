@@ -4,6 +4,7 @@ import com.mdvcraft.mdvcrates.MDVCratesPlugin;
 import com.mdvcraft.mdvcrates.hook.MMOItemsHook;
 import com.mdvcraft.mdvcrates.model.*;
 import com.mdvcraft.mdvcrates.util.ItemStackCodec;
+import com.mdvcraft.mdvcrates.util.CrateBlocks;
 import com.mdvcraft.mdvcrates.util.Text;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
@@ -62,9 +63,16 @@ public final class CrateRepository {
         yaml.set(path + ".enabled", true);
         yaml.set(path + ".display-name", "&6&l" + id);
         yaml.set(path + ".block-material", "CHEST");
-        yaml.set(path + ".key.mmoitems-type", "LLAVES");
+        yaml.set(path + ".key.mmoitems-type", "LLAVE");
         yaml.set(path + ".key.mmoitems-id", "LLAVE_" + id.toUpperCase(Locale.ROOT));
         yaml.set(path + ".locations", new ArrayList<String>());
+        yaml.set(path + ".viewer.show-percentages", true);
+        yaml.set(path + ".name-display.enabled", true);
+        yaml.set(path + ".name-display.text", "{display-name}");
+        yaml.set(path + ".name-display.offset.x", 0.5);
+        yaml.set(path + ".name-display.offset.y", 1.85);
+        yaml.set(path + ".name-display.offset.z", 0.5);
+        yaml.set(path + ".name-display.hide-during-opening", false);
         yaml.createSection(path + ".rewards");
         saveFile();
         reload();
@@ -102,6 +110,8 @@ public final class CrateRepository {
             String p = rewardsPath + "." + id;
             yaml.set(p + ".type", reward.type().name());
             yaml.set(p + ".weight", reward.weight());
+            if (reward.chance() != null) yaml.set(p + ".chance", reward.chance());
+            else yaml.set(p + ".chance", null);
             yaml.set(p + ".amount", reward.amount());
             if (reward.displayName() != null && !reward.displayName().isBlank()) {
                 yaml.set(p + ".name", reward.displayName());
@@ -126,10 +136,13 @@ public final class CrateRepository {
         boolean enabled = sec.getBoolean("enabled", true);
         String displayName = sec.getString("display-name", id);
         Material block = Material.matchMaterial(sec.getString("block-material", "CHEST"));
-        if (block == null || !block.isBlock()) block = Material.CHEST;
+        if (!CrateBlocks.isSupported(block)) {
+            plugin.getLogger().warning("Crate '" + id + "' usa block-material no soportado; se usará CHEST. Soportados: CHEST, TRAPPED_CHEST, ENDER_CHEST y SHULKER_BOX de cualquier color.");
+            block = Material.CHEST;
+        }
 
         KeyDefinition key = new KeyDefinition(
-                sec.getString("key.mmoitems-type", "LLAVES"),
+                sec.getString("key.mmoitems-type", "LLAVE"),
                 sec.getString("key.mmoitems-id", "LLAVE_" + id.toUpperCase(Locale.ROOT)));
 
         List<BlockKey> locations = new ArrayList<>();
@@ -149,9 +162,18 @@ public final class CrateRepository {
             }
         }
 
+        double explicitChanceTotal = rewards.stream().filter(Reward::hasExplicitChance).mapToDouble(r -> r.chance()).sum();
+        if (explicitChanceTotal > 100.0001) {
+            plugin.getLogger().warning("Crate '" + id + "' suma " + explicitChanceTotal + "% en chance explícito. MDVCrates normalizará esas probabilidades a 100% y los rewards solo por peso quedarán en 0%.");
+        }
+
         ConfigurationSection animations = sec.getConfigurationSection("animations");
         if (animations == null) animations = plugin.getConfig().getConfigurationSection("default-animations");
-        return new CrateDefinition(id, enabled, displayName, block, key, locations, rewards, animations);
+        ConfigurationSection viewer = sec.getConfigurationSection("viewer");
+        if (viewer == null) viewer = plugin.getConfig().getConfigurationSection("default-viewer");
+        ConfigurationSection nameDisplay = sec.getConfigurationSection("name-display");
+        if (nameDisplay == null) nameDisplay = plugin.getConfig().getConfigurationSection("default-name-display");
+        return new CrateDefinition(id, enabled, displayName, block, key, locations, rewards, animations, viewer, nameDisplay);
     }
 
     private Reward parseReward(String id, ConfigurationSection rs) {
@@ -163,8 +185,10 @@ public final class CrateRepository {
             return null;
         }
         double weight = Math.max(0, rs.getDouble("weight", 1.0));
+        Double chance = rs.contains("chance") ? Math.max(0, Math.min(100, rs.getDouble("chance")))
+                : (rs.contains("probability") ? Math.max(0, Math.min(100, rs.getDouble("probability"))) : null);
         int amount = Math.max(1, rs.getInt("amount", 1));
-        Reward.Builder b = Reward.builder(id, type).weight(weight).amount(amount)
+        Reward.Builder b = Reward.builder(id, type).weight(weight).chance(chance).amount(amount)
                 .displayName(rs.getString("name"));
 
         switch (type) {
