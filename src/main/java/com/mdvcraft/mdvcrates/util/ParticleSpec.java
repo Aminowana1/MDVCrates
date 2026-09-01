@@ -44,9 +44,23 @@ public final class ParticleSpec {
         String name = section == null ? fallbackParticle : section.getString(pathPrefix + "particle", fallbackParticle);
         int count = section == null ? 1 : section.getInt(pathPrefix + "count", 1);
         double spread = section == null ? 0.0 : section.getDouble(pathPrefix + "spread", 0.0);
-        double extra = section == null ? 0.0 : section.getDouble(pathPrefix + "extra", 0.0);
+        double extra = configuredSpeed(section, pathPrefix + "particle-speed", pathPrefix + "extra", 0.0);
         ConfigurationSection dataSec = section == null ? null : section.getConfigurationSection(pathPrefix + "data");
         return of(name, count, spread, extra, dataSec);
+    }
+
+
+    /**
+     * Lee la velocidad propia de la partícula. Desde 1.2.1 `particle-speed` es
+     * el nombre recomendado. `extra` se conserva como alias compatible con
+     * configuraciones anteriores. En Bukkit este valor corresponde al parámetro
+     * extra/speed de spawnParticle; no controla la duración de vida del cliente.
+     */
+    public static double configuredSpeed(ConfigurationSection section, String speedPath, String legacyExtraPath, double fallback) {
+        if (section == null) return fallback;
+        if (speedPath != null && section.contains(speedPath)) return section.getDouble(speedPath, fallback);
+        if (legacyExtraPath != null && section.contains(legacyExtraPath)) return section.getDouble(legacyExtraPath, fallback);
+        return fallback;
     }
 
     public static ParticleSpec of(String name, int count, double spread, double extra, ConfigurationSection dataSec) {

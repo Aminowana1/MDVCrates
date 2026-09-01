@@ -331,7 +331,9 @@ public final class OpeningSession {
         String name = path("finish.burst-particle", "EXPLOSION");
         int count = integer("finish.burst-count", 1);
         double spread = dbl("finish.burst-spread", 0.0);
-        double extra = dbl("finish.burst-extra", 0.0);
+        double extra = opening != null && opening.contains("finish.burst-particle-speed")
+                ? dbl("finish.burst-particle-speed", 0.0)
+                : dbl("finish.burst-extra", 0.0);
         ParticleSpec spec = ParticleSpec.of(name, count, spread, extra,
                 opening == null ? null : opening.getConfigurationSection("finish.burst-data"));
         Location loc = itemDisplay == null ? displayBase() : itemDisplay.getLocation();
@@ -343,7 +345,8 @@ public final class OpeningSession {
         ConfigurationSection sec = opening.getConfigurationSection(prefix);
         if (sec == null) return ParticleSpec.of(fallback, 1, 0, 0, null);
         return ParticleSpec.of(sec.getString("particle", fallback), sec.getInt("count", 1),
-                sec.getDouble("spread", 0), sec.getDouble("extra", 0), sec.getConfigurationSection("data"));
+                sec.getDouble("spread", 0), ParticleSpec.configuredSpeed(sec, "particle-speed", "extra", 0.0),
+                sec.getConfigurationSection("data"));
     }
 
     private long rollDelayFor(int index) {

@@ -103,11 +103,32 @@ public final class IdleAnimationManager {
             ConfigurationSection s = rings.getConfigurationSection(id);
             if (s == null || !s.getBoolean("enabled", true) || !shouldRun(s, previousTicks)) continue;
             ParticleSpec particle = ParticleSpec.of(s.getString("particle", "END_ROD"), s.getInt("count", 1),
-                    s.getDouble("spread", 0), s.getDouble("extra", 0), s.getConfigurationSection("data"));
+                    s.getDouble("spread", 0), ParticleSpec.configuredSpeed(s, "particle-speed", "extra", 0.0),
+                    s.getConfigurationSection("data"));
             double radius = s.getDouble("radius", 1.0);
             double yOffset = s.getDouble("y-offset", 0.5);
             int points = Math.max(3, s.getInt("points", 18));
             double phaseSpeed = s.getDouble("phase-speed-deg-per-tick", 2.0);
+
+            // Desplazamiento fijo del centro del ring respecto al centro de la crate.
+            // Antes de 1.2.1 estas claves existían en configs de prueba pero no se leían.
+            double centerX = s.getDouble("center-offset.x", 0.0);
+            double centerY = s.getDouble("center-offset.y", 0.0);
+            double centerZ = s.getDouble("center-offset.z", 0.0);
+
+            // Permite que TODO el ring orbite horizontalmente alrededor de la crate
+            // sin modificar la orientación de su plano. Esto es independiente de
+            // phase-speed (puntos dentro del ring) y plane-rotation (orientación).
+            ConfigurationSection centerOrbit = s.getConfigurationSection("center-orbit");
+            if (centerOrbit != null && centerOrbit.getBoolean("enabled", false)) {
+                double orbitRadius = Math.max(0.0, centerOrbit.getDouble("radius", 0.0));
+                double orbitSpeed = centerOrbit.getDouble("speed-deg-per-tick", 0.0);
+                double orbitPhase = centerOrbit.getDouble("phase-deg", 0.0);
+                double orbitAngle = Math.toRadians(orbitPhase + orbitSpeed * elapsedTicks);
+                centerX += Math.cos(orbitAngle) * orbitRadius;
+                centerZ += Math.sin(orbitAngle) * orbitRadius;
+                centerY += centerOrbit.getDouble("y-offset", 0.0);
+            }
 
             double tiltX = Math.toRadians(s.getDouble("tilt-deg.x", 0));
             double tiltY = Math.toRadians(s.getDouble("tilt-deg.y", 0));
@@ -121,7 +142,10 @@ public final class IdleAnimationManager {
                 double angle = phase + Math.PI * 2.0 * i / points;
                 Vector local = new Vector(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
                 Vector v = VecMath.rotateXYZ(local, tiltX + rotX, tiltY + rotY, tiltZ + rotZ);
-                particle.spawn(world, base.getX() + v.getX(), base.getY() + yOffset + v.getY(), base.getZ() + v.getZ());
+                particle.spawn(world,
+                        base.getX() + centerX + v.getX(),
+                        base.getY() + yOffset + centerY + v.getY(),
+                        base.getZ() + centerZ + v.getZ());
             }
         }
     }
@@ -132,7 +156,8 @@ public final class IdleAnimationManager {
             ConfigurationSection s = orbits.getConfigurationSection(id);
             if (s == null || !s.getBoolean("enabled", true) || !shouldRun(s, previousTicks)) continue;
             ParticleSpec particle = ParticleSpec.of(s.getString("particle", "ENCHANT"), s.getInt("count", 1),
-                    s.getDouble("spread", 0), s.getDouble("extra", 0), s.getConfigurationSection("data"));
+                    s.getDouble("spread", 0), ParticleSpec.configuredSpeed(s, "particle-speed", "extra", 0.0),
+                    s.getConfigurationSection("data"));
             int orbiters = Math.max(1, s.getInt("orbiters", 1));
             double radius = s.getDouble("radius", 1.25);
             double yOffset = s.getDouble("y-offset", 0.5);
@@ -171,7 +196,8 @@ public final class IdleAnimationManager {
             if (s == null || !s.getBoolean("enabled", true) || !shouldRun(s, previousTicks)) continue;
 
             ParticleSpec particle = ParticleSpec.of(s.getString("particle", "ENCHANT"), s.getInt("count", 1),
-                    s.getDouble("spread", 0), s.getDouble("extra", 0), s.getConfigurationSection("data"));
+                    s.getDouble("spread", 0), ParticleSpec.configuredSpeed(s, "particle-speed", "extra", 0.0),
+                    s.getConfigurationSection("data"));
             int points = Math.max(0, s.getInt("points-per-spawn", 1));
             double radius = Math.max(0, s.getDouble("radius", 1.5));
             double verticalRadius = Math.max(0, s.getDouble("vertical-radius", radius));

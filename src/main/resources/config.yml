@@ -1,5 +1,5 @@
 # ==========================================================
-# MDVCrates 1.2.0
+# MDVCrates 1.2.1
 # ==========================================================
 
 settings:
@@ -65,7 +65,27 @@ default-animations:
         # Cantidad de partículas Bukkit por cada punto.
         count: 1
         spread: 0.0
-        extra: 0.0
+        # Velocidad propia de la partícula Bukkit. 0.0 = sin impulso extra.
+        # `extra` sigue siendo compatible como nombre antiguo.
+        particle-speed: 0.0
+
+        # Desplazamiento fijo del centro del ring respecto a la crate.
+        center-offset:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+
+        # Mueve TODO el ring alrededor de la crate en el plano horizontal.
+        # El plano/orientación del ring se mantiene fijo salvo que uses
+        # plane-rotation-deg-per-tick. Dos rings opuestos pueden usar
+        # phase-deg 0 y 180.
+        center-orbit:
+          enabled: false
+          radius: 1.10
+          speed-deg-per-tick: -2.0
+          phase-deg: 0.0
+          y-offset: 0.0
+
         phase-speed-deg-per-tick: 2.5
         tilt-deg:
           x: 0.0
@@ -87,7 +107,7 @@ default-animations:
         y-offset: 0.60
         count: 1
         spread: 0.0
-        extra: 0.0
+        particle-speed: 0.0
         angular-speed-deg-per-tick: 4.0
         random-plane: true
         tilt-deg:
@@ -118,7 +138,7 @@ default-animations:
         # Partículas Bukkit en cada ubicación aleatoria.
         count: 1
         spread: 0.0
-        extra: 0.0
+        particle-speed: 0.0
 
   opening:
     suction:
@@ -137,7 +157,7 @@ default-animations:
       # Cantidad de partículas Bukkit dibujadas por mote/posición.
       count: 1
       spread: 0.0
-      extra: 0.0
+      particle-speed: 0.0
 
     roll:
       steps: 18
@@ -163,7 +183,9 @@ default-animations:
       burst-particle: EXPLOSION
       burst-count: 1
       burst-spread: 0.0
-      burst-extra: 0.0
+      # Igual que particle-speed, pero para el burst final.
+      # `burst-extra` sigue funcionando por compatibilidad.
+      burst-particle-speed: 0.0
       reward-sound: ENTITY_PLAYER_LEVELUP
       reward-sound-volume: 1.0
       reward-sound-pitch: 1.15

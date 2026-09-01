@@ -123,6 +123,35 @@ rango:
 - Editor gráfico paginado.
 - Visualizador de premios paginado.
 - Idle Rings/Orbits/Random Points y animaciones de opening.
+
+### Rings 1.2.1: centro desplazable y órbita del ring completo
+
+Los `rings` aceptan ahora `center-offset.x/y/z` para mover su centro y un bloque
+`center-orbit` opcional para que el ring completo gire horizontalmente alrededor
+de la crate sin cambiar la orientación de su plano:
+
+```yaml
+center-offset:
+  x: 0.0
+  y: 0.0
+  z: 0.0
+
+center-orbit:
+  enabled: true
+  radius: 1.10
+  speed-deg-per-tick: -2.0
+  phase-deg: 0.0
+  y-offset: 0.0
+```
+
+`phase-deg: 180.0` permite colocar un segundo ring exactamente al lado opuesto.
+`phase-speed-deg-per-tick` sigue moviendo los puntos DENTRO del ring y
+`plane-rotation-deg-per-tick` sigue rotando el plano del ring.
+
+Las partículas aceptan además `particle-speed`. Es un nombre más claro para el
+parámetro Bukkit `extra`; las configs antiguas con `extra` continúan funcionando.
+`particle-speed: 0.0` elimina el impulso extra de la partícula, pero no puede
+reducir su vida visual, ya que esa duración la controla el cliente de Minecraft.
 - Holograma/nombre configurable por crate.
 
 ## Comandos
