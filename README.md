@@ -1,4 +1,10 @@
-# MDVCrates 1.1.2
+# MDVCrates 1.1.3
+
+## Fix 1.1.3
+
+- Corrige el `NullPointerException` de `CrateRepository.parseReward` al guardar desde el editor recompensas nuevas sin `chance` explícito.
+- Los rewards añadidos desde `/mdvcrates editor <crate>` pueden usar únicamente `weight`, tanto si son MMOItems como ItemStacks custom.
+- `chance` y el alias `probability` siguen siendo opcionales y se limitan de 0 a 100.
 
 Plugin de crates físicas para Paper/Purpur 1.21.6, Java 21.
 
@@ -171,4 +177,4 @@ También compila con Java 21 + Maven:
 mvn clean package
 ```
 
-El jar sale en `target/MDVCrates-1.1.2.jar`.
+El jar sale en `target/MDVCrates-1.1.3.jar`.

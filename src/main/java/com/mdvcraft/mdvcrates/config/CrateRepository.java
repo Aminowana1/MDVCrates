@@ -194,8 +194,18 @@ public final class CrateRepository {
             return null;
         }
         double weight = Math.max(0, rs.getDouble("weight", 1.0));
-        Double chance = rs.contains("chance") ? Math.max(0, Math.min(100, rs.getDouble("chance")))
-                : (rs.contains("probability") ? Math.max(0, Math.min(100, rs.getDouble("probability"))) : null);
+
+        // chance/probability es opcional. No usar un ternario mezclando double y null:
+        // Java puede intentar desempaquetar el null como Double#doubleValue(), lo que
+        // provocaba un NPE al guardar desde el editor cualquier reward nuevo que
+        // utilizara solo weight (por ejemplo un MMOItem recién añadido).
+        Double chance = null;
+        if (rs.contains("chance")) {
+            chance = clampPercent(rs.getDouble("chance"));
+        } else if (rs.contains("probability")) {
+            chance = clampPercent(rs.getDouble("probability"));
+        }
+
         int amount = Math.max(1, rs.getInt("amount", 1));
         Reward.Builder b = Reward.builder(id, type).weight(weight).chance(chance).amount(amount)
                 .displayName(rs.getString("name"));
@@ -217,6 +227,10 @@ public final class CrateRepository {
             }
         }
         return b.build();
+    }
+
+    private static double clampPercent(double value) {
+        return Math.max(0.0, Math.min(100.0, value));
     }
 
     private ItemStack buildPreview(ConfigurationSection sec, String fallbackName) {
