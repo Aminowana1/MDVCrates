@@ -15,6 +15,7 @@ D:\dev\mdv\MDVCrates\src\main\java\com\mdvcraft\mdvcrates\listener\PlayerSafetyL
 D:\dev\mdv\MDVCrates\src\main\java\com\mdvcraft\mdvcrates\listener\RewardViewerListener.java
 D:\dev\mdv\MDVCrates\src\main\java\com\mdvcraft\mdvcrates\MDVCratesPlugin.java
 D:\dev\mdv\MDVCrates\src\main\java\com\mdvcraft\mdvcrates\model\BlockKey.java
+D:\dev\mdv\MDVCrates\src\main\java\com\mdvcraft\mdvcrates\model\BroadcastDefinition.java
 D:\dev\mdv\MDVCrates\src\main\java\com\mdvcraft\mdvcrates\model\CrateDefinition.java
 D:\dev\mdv\MDVCrates\src\main\java\com\mdvcraft\mdvcrates\model\KeyDefinition.java
 D:\dev\mdv\MDVCrates\src\main\java\com\mdvcraft\mdvcrates\model\PendingReward.java

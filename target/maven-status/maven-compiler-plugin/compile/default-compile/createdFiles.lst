@@ -35,6 +35,7 @@ com\mdvcraft\mdvcrates\util\PlaceholderUtil.class
 com\mdvcraft\mdvcrates\service\RewardService$1.class
 com\mdvcraft\mdvcrates\listener\CrateProtectionListener.class
 com\mdvcraft\mdvcrates\service\CrateManager.class
+com\mdvcraft\mdvcrates\model\BroadcastDefinition.class
 com\mdvcraft\mdvcrates\hook\MMOItemsHook$MmoIdentity.class
 com\mdvcraft\mdvcrates\editor\EditorManager.class
 com\mdvcraft\mdvcrates\util\VanillaItemUtil.class
