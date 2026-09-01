@@ -11,6 +11,7 @@ import com.mdvcraft.mdvcrates.service.*;
 import com.mdvcraft.mdvcrates.viewer.RewardViewerManager;
 import org.bukkit.World;
 import org.bukkit.entity.ItemDisplay;
+import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -88,6 +89,9 @@ public final class MDVCratesPlugin extends JavaPlugin {
                 if (display.getScoreboardTags().contains("mdvcrates_visual")) display.remove();
             }
             for (TextDisplay display : world.getEntitiesByClass(TextDisplay.class)) {
+                if (display.getScoreboardTags().contains("mdvcrates_visual")) display.remove();
+            }
+            for (BlockDisplay display : world.getEntitiesByClass(BlockDisplay.class)) {
                 if (display.getScoreboardTags().contains("mdvcrates_visual")) display.remove();
             }
         }

@@ -15,6 +15,7 @@ import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.ItemDisplay;
+import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
@@ -32,6 +33,7 @@ public final class IdleAnimationManager {
     private final OpeningManager openings;
     private final Map<BlockKey, TextDisplay> nameDisplays = new HashMap<>();
     private final Map<VisualKey, ItemDisplay> itemDisplays = new HashMap<>();
+    private final Map<VisualKey, BlockDisplay> blockDisplays = new HashMap<>();
     private final Map<BlockKey, Long> openingStartTicks = new HashMap<>();
     private BukkitTask task;
     private long elapsedTicks;
@@ -55,8 +57,10 @@ public final class IdleAnimationManager {
         task = null;
         for (TextDisplay display : new ArrayList<>(nameDisplays.values())) removeDisplay(display);
         for (ItemDisplay display : new ArrayList<>(itemDisplays.values())) removeDisplay(display);
+        for (BlockDisplay display : new ArrayList<>(blockDisplays.values())) removeDisplay(display);
         nameDisplays.clear();
         itemDisplays.clear();
+        blockDisplays.clear();
         openingStartTicks.clear();
     }
 
@@ -100,6 +104,7 @@ public final class IdleAnimationManager {
 
             // 1.2.2: ItemDisplays estáticos, por ejemplo un cristal flotando encima.
             syncStaticItemDisplays(block, idle.getConfigurationSection("item-displays"), key, opening, itemVisualsThisTick);
+            syncStaticBlockDisplays(block, idle.getConfigurationSection("block-displays"), key, opening, itemVisualsThisTick);
 
             drawRings(world, center, idle.getConfigurationSection("rings"), previousTicks);
             drawOrbits(world, center, idle.getConfigurationSection("orbits"), key, opening, previousTicks, itemVisualsThisTick);
@@ -116,6 +121,9 @@ public final class IdleAnimationManager {
         // cuando vuelva a haber un jugador cerca. Así no quedan entidades basura.
         for (VisualKey visualKey : new ArrayList<>(itemDisplays.keySet())) {
             if (!itemVisualsThisTick.contains(visualKey)) removeItemVisual(visualKey);
+        }
+        for (VisualKey visualKey : new ArrayList<>(blockDisplays.keySet())) {
+            if (!itemVisualsThisTick.contains(visualKey)) removeBlockVisual(visualKey);
         }
 
         // Limpia estados de apertura que ya terminaron.
@@ -190,12 +198,14 @@ public final class IdleAnimationManager {
             ConfigurationSection s = orbits.getConfigurationSection(id);
             if (s == null || !s.getBoolean("enabled", true)) continue;
 
+            ConfigurationSection blockDisplaySection = s.getConfigurationSection("block-display");
+            boolean useBlockDisplay = blockDisplaySection != null && blockDisplaySection.getBoolean("enabled", true);
             ConfigurationSection displaySection = s.getConfigurationSection("item-display");
-            boolean useItemDisplay = displaySection != null && displaySection.getBoolean("enabled", true);
+            boolean useItemDisplay = !useBlockDisplay && displaySection != null && displaySection.getBoolean("enabled", true);
 
             // Los ItemDisplays se actualizan en cada tick del motor para que el
             // movimiento sea continuo. interval-ticks sigue aplicando a partículas.
-            if (!useItemDisplay && !shouldRun(s, previousTicks)) continue;
+            if (!useItemDisplay && !useBlockDisplay && !shouldRun(s, previousTicks)) continue;
 
             int orbiters = Math.max(1, s.getInt("orbiters", 1));
             double radius = s.getDouble("radius", 1.25);
@@ -217,7 +227,7 @@ public final class IdleAnimationManager {
             tiltZ += Math.toRadians(s.getDouble("plane-rotation-deg-per-tick.z", 0) * elapsedTicks);
 
             ParticleSpec particle = null;
-            if (!useItemDisplay) {
+            if (!useItemDisplay && !useBlockDisplay) {
                 particle = ParticleSpec.of(s.getString("particle", "ENCHANT"), s.getInt("count", 1),
                         s.getDouble("spread", 0), ParticleSpec.configuredSpeed(s, "particle-speed", "extra", 0.0),
                         s.getConfigurationSection("data"));
@@ -232,7 +242,13 @@ public final class IdleAnimationManager {
                         base.getY() + yOffset + v.getY(),
                         base.getZ() + v.getZ());
 
-                if (useItemDisplay) {
+                if (useBlockDisplay) {
+                    if (opening && blockDisplaySection.getBoolean("hide-during-opening", false)) continue;
+                    loc = applyOpeningMovement(loc, blockDisplaySection, key);
+                    VisualKey visualKey = new VisualKey(key, "orbit-block:" + id, i);
+                    itemVisualsThisTick.add(visualKey);
+                    syncBlockDisplay(visualKey, loc, blockDisplaySection);
+                } else if (useItemDisplay) {
                     if (opening && displaySection.getBoolean("hide-during-opening", false)) continue;
                     loc = applyOpeningMovement(loc, displaySection, key);
                     VisualKey visualKey = new VisualKey(key, "orbit:" + id, i);
@@ -267,6 +283,64 @@ public final class IdleAnimationManager {
             itemVisualsThisTick.add(visualKey);
             syncItemDisplay(visualKey, loc, s);
         }
+    }
+
+    private void syncStaticBlockDisplays(Block block, ConfigurationSection displays, BlockKey key, boolean opening,
+                                         Set<VisualKey> visualsThisTick) {
+        if (displays == null) return;
+        for (String id : displays.getKeys(false)) {
+            ConfigurationSection s = displays.getConfigurationSection(id);
+            if (s == null || !s.getBoolean("enabled", true)) continue;
+            if (opening && s.getBoolean("hide-during-opening", false)) continue;
+            Location loc = block.getLocation().add(
+                    s.getDouble("offset.x", 0.5),
+                    s.getDouble("offset.y", 1.5),
+                    s.getDouble("offset.z", 0.5));
+            loc = applyOpeningMovement(loc, s, key);
+            VisualKey visualKey = new VisualKey(key, "static-block:" + id, 0);
+            visualsThisTick.add(visualKey);
+            syncBlockDisplay(visualKey, loc, s);
+        }
+    }
+
+    private void syncBlockDisplay(VisualKey key, Location loc, ConfigurationSection s) {
+        BlockDisplay display = blockDisplays.get(key);
+        Material material = Material.matchMaterial(s.getString("material", "AMETHYST_BLOCK"));
+        if (material == null || !material.isBlock() || material.isAir()) return;
+        if (display == null || !display.isValid() || display.getWorld() != loc.getWorld()) {
+            removeBlockVisual(key);
+            display = loc.getWorld().spawn(loc, BlockDisplay.class, d -> {
+                d.setPersistent(false);
+                d.setGravity(false);
+                d.setInvulnerable(true);
+                d.setBillboard(parseBillboard(s.getString("billboard", "FIXED")));
+                d.setBlock(material.createBlockData());
+                d.setViewRange((float)Math.max(0.1, s.getDouble("view-range", 1.0)));
+                d.setTeleportDuration(Math.max(0, Math.min(59, s.getInt("teleport-duration-ticks", 1))));
+                d.setShadowRadius((float)Math.max(0.0, s.getDouble("shadow-radius", 0.0)));
+                d.setShadowStrength((float)Math.max(0.0, s.getDouble("shadow-strength", 0.0)));
+                d.addScoreboardTag("mdvcrates_visual");
+                d.addScoreboardTag("mdvcrates_block_visual");
+                applyBlockDisplayScale(d, s);
+            });
+            blockDisplays.put(key, display);
+        } else {
+            display.setBillboard(parseBillboard(s.getString("billboard", "FIXED")));
+            display.setViewRange((float)Math.max(0.1, s.getDouble("view-range", 1.0)));
+            display.setTeleportDuration(Math.max(0, Math.min(59, s.getInt("teleport-duration-ticks", 1))));
+            applyBlockDisplayScale(display, s);
+            if (display.getLocation().distanceSquared(loc) > 0.000001) display.teleport(loc);
+        }
+    }
+
+    private void applyBlockDisplayScale(BlockDisplay display, ConfigurationSection s) {
+        double size = Math.max(0.001, s.getDouble("size", 1.0));
+        float sx = (float)Math.max(0.001, s.contains("scale.x") ? s.getDouble("scale.x") : size);
+        float sy = (float)Math.max(0.001, s.contains("scale.y") ? s.getDouble("scale.y") : size);
+        float sz = (float)Math.max(0.001, s.contains("scale.z") ? s.getDouble("scale.z") : size);
+        display.setTransformation(new Transformation(
+                new Vector3f(-sx / 2f, -sy / 2f, -sz / 2f), new AxisAngle4f(),
+                new Vector3f(sx, sy, sz), new AxisAngle4f()));
     }
 
     /**
@@ -466,11 +540,20 @@ public final class IdleAnimationManager {
         removeDisplay(display);
     }
 
+    private void removeBlockVisual(VisualKey key) {
+        BlockDisplay display = blockDisplays.remove(key);
+        removeDisplay(display);
+    }
+
     private void removeDisplay(TextDisplay display) {
         if (display != null && display.isValid()) display.remove();
     }
 
     private void removeDisplay(ItemDisplay display) {
+        if (display != null && display.isValid()) display.remove();
+    }
+
+    private void removeDisplay(BlockDisplay display) {
         if (display != null && display.isValid()) display.remove();
     }
 

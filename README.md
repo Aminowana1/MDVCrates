@@ -1,4 +1,4 @@
-# MDVCrates 1.2.2
+# MDVCrates 1.2.3
 
 Plugin de crates físicas para Paper/Purpur 1.21.6, Java 21.
 
@@ -273,3 +273,45 @@ Al terminar la apertura vuelve a su posición idle base.
 
 Curvas soportadas: `LINEAR`, `EASE_IN_QUAD`, `EASE_OUT_QUAD`,
 `EASE_IN_OUT_QUAD` y `EASE_OUT_CUBIC`.
+
+
+## 1.2.3 - BlockDisplay real
+
+`ItemDisplay` usa el modelo de inventario del material. Para cubos/bloques 3D reales usa `block-display:` en una órbita o `idle.block-displays:` para displays estáticos.
+
+### Bloque orbitando
+```yaml
+orbits:
+  piedra:
+    enabled: true
+    orbiters: 1
+    radius: 1.05
+    y-offset: 0.0
+    angular-speed-deg-per-tick: 2.4
+    random-plane: false
+    tilt-deg: {x: 55.0, y: 0.0, z: 20.0}
+    plane-rotation-deg-per-tick: {x: 0.0, y: 0.0, z: 0.0}
+    block-display:
+      enabled: true
+      material: CALCITE
+      size: 0.14
+      billboard: FIXED
+      teleport-duration-ticks: 1
+      hide-during-opening: false
+```
+
+### Bloque estático arriba de la crate
+```yaml
+block-displays:
+  cristal:
+    enabled: true
+    material: AMETHYST_CLUSTER
+    offset: {x: 0.5, y: 1.55, z: 0.5}
+    size: 0.65
+    billboard: FIXED
+    opening-movement:
+      enabled: true
+      duration-ticks: 20
+      curve: LINEAR
+      offset: {x: 0.0, y: 1.0, z: 0.0}
+```
