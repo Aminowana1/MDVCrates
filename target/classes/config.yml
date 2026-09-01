@@ -6,7 +6,7 @@ settings:
   interaction-hand: MAIN_HAND
   require-free-slot: true
   prevent-double-chests: true
-  max-open-distance: 6.0
+  max-open-distance: 9.0
   deliver-pending-on-join-delay-ticks: 20
 
 editor:
@@ -62,6 +62,15 @@ below-name-display:
   view-range: 1.0
   hide-during-opening: true
   max-distance: 4.0
+
+# Mensaje broadcast cuando alguien abre una crate.
+# Placeholders: {player} y {display-name}
+# Puede sobrescribirse por crate con broadcast:.
+default-broadcast:
+  enabled: true
+  text: "{player} ha abierto una {display-name}."
+  sound: ENTITY_PLAYER_LEVELUP
+  sound-enabled: true
 
 
 # Si una crate no tiene su bloque animations:, usa este preset.

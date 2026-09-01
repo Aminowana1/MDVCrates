@@ -100,6 +100,7 @@ public final class OpeningManager {
             byCrate.put(key, session);
             byPlayer.put(player.getUniqueId(), session);
             messages.send(player, "open-start", Map.of("crate", crate.displayName()));
+            broadcastOpening(player, crate);
             session.start();
         } catch (Throwable ex) {
             plugin.getLogger().severe("No se pudo iniciar una apertura: " + ex.getMessage());
@@ -144,5 +145,33 @@ public final class OpeningManager {
 
     public PendingRewardService pending() {
         return pending;
+    }
+
+    private void broadcastOpening(Player player, CrateDefinition crate) {
+        BroadcastDefinition broadcast = BroadcastDefinition.of(crate.broadcastSection());
+        if (!broadcast.enabled() || broadcast.text().isEmpty())
+            return;
+
+        String message = broadcast.text()
+                .replace("{player}", player.getName())
+                .replace("{display-name}", crate.displayName());
+        
+        // Colorize and broadcast to all players
+        message = com.mdvcraft.mdvcrates.util.Text.color(message);
+        for (Player online : plugin.getServer().getOnlinePlayers()) {
+            online.sendMessage(message);
+        }
+
+        // Play sound if enabled
+        if (broadcast.soundEnabled()) {
+            try {
+                org.bukkit.Sound sound = org.bukkit.Sound.valueOf(broadcast.sound().toUpperCase(java.util.Locale.ROOT));
+                for (Player online : plugin.getServer().getOnlinePlayers()) {
+                    online.playSound(player.getLocation(), sound, 1.0f, 1.0f);
+                }
+            } catch (Exception ignored) {
+                // Invalid sound name, skip
+            }
+        }
     }
 }

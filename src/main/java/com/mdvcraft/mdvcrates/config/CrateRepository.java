@@ -246,8 +246,11 @@ public final class CrateRepository {
         ConfigurationSection belowNameDisplay = sec.getConfigurationSection("below-name-display");
         if (belowNameDisplay == null)
             belowNameDisplay = plugin.getConfig().getConfigurationSection("below-name-display");
+        ConfigurationSection broadcast = sec.getConfigurationSection("broadcast");
+        if (broadcast == null)
+            broadcast = plugin.getConfig().getConfigurationSection("default-broadcast");
         return new CrateDefinition(id, enabled, displayName, block, key, locations, rewards, animations, viewer,
-                nameDisplay, belowNameDisplay);
+                nameDisplay, belowNameDisplay, broadcast);
     }
 
     private Reward parseReward(String crateId, String id, ConfigurationSection rs) {

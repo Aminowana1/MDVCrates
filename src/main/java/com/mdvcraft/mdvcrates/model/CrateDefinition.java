@@ -19,11 +19,13 @@ public final class CrateDefinition {
     private final ConfigurationSection viewerSection;
     private final ConfigurationSection nameDisplaySection;
     private final ConfigurationSection belowNameDisplaySection;
+    private final ConfigurationSection broadcastSection;
 
     public CrateDefinition(String id, boolean enabled, String displayName, Material blockMaterial,
             KeyDefinition key, List<BlockKey> locations, List<Reward> rewards,
             ConfigurationSection animationSection, ConfigurationSection viewerSection,
-            ConfigurationSection nameDisplaySection, ConfigurationSection belowNameDisplaySection) {
+            ConfigurationSection nameDisplaySection, ConfigurationSection belowNameDisplaySection,
+            ConfigurationSection broadcastSection) {
         this.id = id;
         this.enabled = enabled;
         this.displayName = displayName;
@@ -35,6 +37,7 @@ public final class CrateDefinition {
         this.viewerSection = viewerSection;
         this.nameDisplaySection = nameDisplaySection;
         this.belowNameDisplaySection = belowNameDisplaySection;
+        this.broadcastSection = broadcastSection;
     }
 
     public String id() {
@@ -79,5 +82,9 @@ public final class CrateDefinition {
 
     public ConfigurationSection belowNameDisplaySection() {
         return belowNameDisplaySection;
+    }
+
+    public ConfigurationSection broadcastSection() {
+        return broadcastSection;
     }
 }
