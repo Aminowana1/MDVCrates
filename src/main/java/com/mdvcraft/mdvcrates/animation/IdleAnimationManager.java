@@ -32,6 +32,7 @@ public final class IdleAnimationManager {
     private final CrateManager crates;
     private final OpeningManager openings;
     private final Map<BlockKey, TextDisplay> nameDisplays = new HashMap<>();
+    private final Map<BlockKey, TextDisplay> belowNameDisplays = new HashMap<>();
     private final Map<VisualKey, ItemDisplay> itemDisplays = new HashMap<>();
     private final Map<VisualKey, BlockDisplay> blockDisplays = new HashMap<>();
     private final Map<BlockKey, Long> openingStartTicks = new HashMap<>();
@@ -53,12 +54,19 @@ public final class IdleAnimationManager {
     }
 
     public void stop() {
-        if (task != null) task.cancel();
+        if (task != null)
+            task.cancel();
         task = null;
-        for (TextDisplay display : new ArrayList<>(nameDisplays.values())) removeDisplay(display);
-        for (ItemDisplay display : new ArrayList<>(itemDisplays.values())) removeDisplay(display);
-        for (BlockDisplay display : new ArrayList<>(blockDisplays.values())) removeDisplay(display);
+        for (TextDisplay display : new ArrayList<>(nameDisplays.values()))
+            removeDisplay(display);
+        for (TextDisplay display : new ArrayList<>(belowNameDisplays.values()))
+            removeDisplay(display);
+        for (ItemDisplay display : new ArrayList<>(itemDisplays.values()))
+            removeDisplay(display);
+        for (BlockDisplay display : new ArrayList<>(blockDisplays.values()))
+            removeDisplay(display);
         nameDisplays.clear();
+        belowNameDisplays.clear();
         itemDisplays.clear();
         blockDisplays.clear();
         openingStartTicks.clear();
@@ -92,38 +100,49 @@ public final class IdleAnimationManager {
             visibleThisTick.add(key);
 
             boolean opening = openings.isLocked(key);
-            if (opening) openingStartTicks.putIfAbsent(key, elapsedTicks);
-            else openingStartTicks.remove(key);
+            if (opening)
+                openingStartTicks.putIfAbsent(key, elapsedTicks);
+            else
+                openingStartTicks.remove(key);
 
             // El nombre y las animaciones idle son independientes de la apertura.
             // Solo el nombre puede ocultarse durante opening si así lo pide la crate.
             syncNameDisplay(key, block, crate, opening);
+            syncBelowNameDisplay(key, block, crate, opening);
 
-            ConfigurationSection idle = crate.animationSection() == null ? null : crate.animationSection().getConfigurationSection("idle");
-            if (idle == null || !idle.getBoolean("enabled", true)) continue;
+            ConfigurationSection idle = crate.animationSection() == null ? null
+                    : crate.animationSection().getConfigurationSection("idle");
+            if (idle == null || !idle.getBoolean("enabled", true))
+                continue;
 
             // 1.2.2: ItemDisplays estáticos, por ejemplo un cristal flotando encima.
-            syncStaticItemDisplays(block, idle.getConfigurationSection("item-displays"), key, opening, itemVisualsThisTick);
-            syncStaticBlockDisplays(block, idle.getConfigurationSection("block-displays"), key, opening, itemVisualsThisTick);
+            syncStaticItemDisplays(block, idle.getConfigurationSection("item-displays"), key, opening,
+                    itemVisualsThisTick);
+            syncStaticBlockDisplays(block, idle.getConfigurationSection("block-displays"), key, opening,
+                    itemVisualsThisTick);
 
             drawRings(world, center, idle.getConfigurationSection("rings"), previousTicks);
-            drawOrbits(world, center, idle.getConfigurationSection("orbits"), key, opening, previousTicks, itemVisualsThisTick);
+            drawOrbits(world, center, idle.getConfigurationSection("orbits"), key, opening, previousTicks,
+                    itemVisualsThisTick);
             drawRandomPoints(world, center, idle.getConfigurationSection("random-points"), previousTicks);
         }
 
         // Elimina hologramas de crates que ya no están cargadas/visibles/registradas.
         for (BlockKey key : new ArrayList<>(nameDisplays.keySet())) {
-            if (!visibleThisTick.contains(key)) removeName(key);
+            if (!visibleThisTick.contains(key))
+                removeName(key);
         }
 
         // ItemDisplays idle son entidades temporales administradas por el plugin.
         // Si la crate deja de estar visible, se elimina el display y se recreará
         // cuando vuelva a haber un jugador cerca. Así no quedan entidades basura.
         for (VisualKey visualKey : new ArrayList<>(itemDisplays.keySet())) {
-            if (!itemVisualsThisTick.contains(visualKey)) removeItemVisual(visualKey);
+            if (!itemVisualsThisTick.contains(visualKey))
+                removeItemVisual(visualKey);
         }
         for (VisualKey visualKey : new ArrayList<>(blockDisplays.keySet())) {
-            if (!itemVisualsThisTick.contains(visualKey)) removeBlockVisual(visualKey);
+            if (!itemVisualsThisTick.contains(visualKey))
+                removeBlockVisual(visualKey);
         }
 
         // Limpia estados de apertura que ya terminaron.
@@ -136,10 +155,12 @@ public final class IdleAnimationManager {
     }
 
     private void drawRings(World world, Location base, ConfigurationSection rings, long previousTicks) {
-        if (rings == null) return;
+        if (rings == null)
+            return;
         for (String id : rings.getKeys(false)) {
             ConfigurationSection s = rings.getConfigurationSection(id);
-            if (s == null || !s.getBoolean("enabled", true) || !shouldRun(s, previousTicks)) continue;
+            if (s == null || !s.getBoolean("enabled", true) || !shouldRun(s, previousTicks))
+                continue;
             ParticleSpec particle = ParticleSpec.of(s.getString("particle", "END_ROD"), s.getInt("count", 1),
                     s.getDouble("spread", 0), ParticleSpec.configuredSpeed(s, "particle-speed", "extra", 0.0),
                     s.getConfigurationSection("data"));
@@ -192,20 +213,24 @@ public final class IdleAnimationManager {
      * se teletransporta por la trayectoria, en vez de crear partículas nuevas.
      */
     private void drawOrbits(World world, Location base, ConfigurationSection orbits, BlockKey key, boolean opening,
-                            long previousTicks, Set<VisualKey> itemVisualsThisTick) {
-        if (orbits == null) return;
+            long previousTicks, Set<VisualKey> itemVisualsThisTick) {
+        if (orbits == null)
+            return;
         for (String id : orbits.getKeys(false)) {
             ConfigurationSection s = orbits.getConfigurationSection(id);
-            if (s == null || !s.getBoolean("enabled", true)) continue;
+            if (s == null || !s.getBoolean("enabled", true))
+                continue;
 
             ConfigurationSection blockDisplaySection = s.getConfigurationSection("block-display");
             boolean useBlockDisplay = blockDisplaySection != null && blockDisplaySection.getBoolean("enabled", true);
             ConfigurationSection displaySection = s.getConfigurationSection("item-display");
-            boolean useItemDisplay = !useBlockDisplay && displaySection != null && displaySection.getBoolean("enabled", true);
+            boolean useItemDisplay = !useBlockDisplay && displaySection != null
+                    && displaySection.getBoolean("enabled", true);
 
             // Los ItemDisplays se actualizan en cada tick del motor para que el
             // movimiento sea continuo. interval-ticks sigue aplicando a partículas.
-            if (!useItemDisplay && !useBlockDisplay && !shouldRun(s, previousTicks)) continue;
+            if (!useItemDisplay && !useBlockDisplay && !shouldRun(s, previousTicks))
+                continue;
 
             int orbiters = Math.max(1, s.getInt("orbiters", 1));
             double radius = s.getDouble("radius", 1.25);
@@ -243,13 +268,15 @@ public final class IdleAnimationManager {
                         base.getZ() + v.getZ());
 
                 if (useBlockDisplay) {
-                    if (opening && blockDisplaySection.getBoolean("hide-during-opening", false)) continue;
+                    if (opening && blockDisplaySection.getBoolean("hide-during-opening", false))
+                        continue;
                     loc = applyOpeningMovement(loc, blockDisplaySection, key);
                     VisualKey visualKey = new VisualKey(key, "orbit-block:" + id, i);
                     itemVisualsThisTick.add(visualKey);
                     syncBlockDisplay(visualKey, loc, blockDisplaySection);
                 } else if (useItemDisplay) {
-                    if (opening && displaySection.getBoolean("hide-during-opening", false)) continue;
+                    if (opening && displaySection.getBoolean("hide-during-opening", false))
+                        continue;
                     loc = applyOpeningMovement(loc, displaySection, key);
                     VisualKey visualKey = new VisualKey(key, "orbit:" + id, i);
                     itemVisualsThisTick.add(visualKey);
@@ -266,12 +293,15 @@ public final class IdleAnimationManager {
      * la esquina inferior del bloque, igual que name-display y roll.display-offset.
      */
     private void syncStaticItemDisplays(Block block, ConfigurationSection displays, BlockKey key, boolean opening,
-                                        Set<VisualKey> itemVisualsThisTick) {
-        if (displays == null) return;
+            Set<VisualKey> itemVisualsThisTick) {
+        if (displays == null)
+            return;
         for (String id : displays.getKeys(false)) {
             ConfigurationSection s = displays.getConfigurationSection(id);
-            if (s == null || !s.getBoolean("enabled", true)) continue;
-            if (opening && s.getBoolean("hide-during-opening", false)) continue;
+            if (s == null || !s.getBoolean("enabled", true))
+                continue;
+            if (opening && s.getBoolean("hide-during-opening", false))
+                continue;
 
             Location loc = block.getLocation().add(
                     s.getDouble("offset.x", 0.5),
@@ -286,12 +316,15 @@ public final class IdleAnimationManager {
     }
 
     private void syncStaticBlockDisplays(Block block, ConfigurationSection displays, BlockKey key, boolean opening,
-                                         Set<VisualKey> visualsThisTick) {
-        if (displays == null) return;
+            Set<VisualKey> visualsThisTick) {
+        if (displays == null)
+            return;
         for (String id : displays.getKeys(false)) {
             ConfigurationSection s = displays.getConfigurationSection(id);
-            if (s == null || !s.getBoolean("enabled", true)) continue;
-            if (opening && s.getBoolean("hide-during-opening", false)) continue;
+            if (s == null || !s.getBoolean("enabled", true))
+                continue;
+            if (opening && s.getBoolean("hide-during-opening", false))
+                continue;
             Location loc = block.getLocation().add(
                     s.getDouble("offset.x", 0.5),
                     s.getDouble("offset.y", 1.5),
@@ -306,7 +339,8 @@ public final class IdleAnimationManager {
     private void syncBlockDisplay(VisualKey key, Location loc, ConfigurationSection s) {
         BlockDisplay display = blockDisplays.get(key);
         Material material = Material.matchMaterial(s.getString("material", "AMETHYST_BLOCK"));
-        if (material == null || !material.isBlock() || material.isAir()) return;
+        if (material == null || !material.isBlock() || material.isAir())
+            return;
         if (display == null || !display.isValid() || display.getWorld() != loc.getWorld()) {
             removeBlockVisual(key);
             display = loc.getWorld().spawn(loc, BlockDisplay.class, d -> {
@@ -315,10 +349,10 @@ public final class IdleAnimationManager {
                 d.setInvulnerable(true);
                 d.setBillboard(parseBillboard(s.getString("billboard", "FIXED")));
                 d.setBlock(material.createBlockData());
-                d.setViewRange((float)Math.max(0.1, s.getDouble("view-range", 1.0)));
+                d.setViewRange((float) Math.max(0.1, s.getDouble("view-range", 1.0)));
                 d.setTeleportDuration(Math.max(0, Math.min(59, s.getInt("teleport-duration-ticks", 1))));
-                d.setShadowRadius((float)Math.max(0.0, s.getDouble("shadow-radius", 0.0)));
-                d.setShadowStrength((float)Math.max(0.0, s.getDouble("shadow-strength", 0.0)));
+                d.setShadowRadius((float) Math.max(0.0, s.getDouble("shadow-radius", 0.0)));
+                d.setShadowStrength((float) Math.max(0.0, s.getDouble("shadow-strength", 0.0)));
                 d.addScoreboardTag("mdvcrates_visual");
                 d.addScoreboardTag("mdvcrates_block_visual");
                 applyBlockDisplayScale(d, s);
@@ -326,18 +360,19 @@ public final class IdleAnimationManager {
             blockDisplays.put(key, display);
         } else {
             display.setBillboard(parseBillboard(s.getString("billboard", "FIXED")));
-            display.setViewRange((float)Math.max(0.1, s.getDouble("view-range", 1.0)));
+            display.setViewRange((float) Math.max(0.1, s.getDouble("view-range", 1.0)));
             display.setTeleportDuration(Math.max(0, Math.min(59, s.getInt("teleport-duration-ticks", 1))));
             applyBlockDisplayScale(display, s);
-            if (display.getLocation().distanceSquared(loc) > 0.000001) display.teleport(loc);
+            if (display.getLocation().distanceSquared(loc) > 0.000001)
+                display.teleport(loc);
         }
     }
 
     private void applyBlockDisplayScale(BlockDisplay display, ConfigurationSection s) {
         double size = Math.max(0.001, s.getDouble("size", 1.0));
-        float sx = (float)Math.max(0.001, s.contains("scale.x") ? s.getDouble("scale.x") : size);
-        float sy = (float)Math.max(0.001, s.contains("scale.y") ? s.getDouble("scale.y") : size);
-        float sz = (float)Math.max(0.001, s.contains("scale.z") ? s.getDouble("scale.z") : size);
+        float sx = (float) Math.max(0.001, s.contains("scale.x") ? s.getDouble("scale.x") : size);
+        float sy = (float) Math.max(0.001, s.contains("scale.y") ? s.getDouble("scale.y") : size);
+        float sz = (float) Math.max(0.001, s.contains("scale.z") ? s.getDouble("scale.z") : size);
         display.setTransformation(new Transformation(
                 new Vector3f(-sx / 2f, -sy / 2f, -sz / 2f), new AxisAngle4f(),
                 new Vector3f(sx, sy, sz), new AxisAngle4f()));
@@ -349,15 +384,18 @@ public final class IdleAnimationManager {
      */
     private Location applyOpeningMovement(Location base, ConfigurationSection visualSection, BlockKey key) {
         ConfigurationSection movement = visualSection.getConfigurationSection("opening-movement");
-        if (movement == null || !movement.getBoolean("enabled", false)) return base;
+        if (movement == null || !movement.getBoolean("enabled", false))
+            return base;
 
         Long openingStart = openingStartTicks.get(key);
-        if (openingStart == null) return base;
+        if (openingStart == null)
+            return base;
 
         long age = Math.max(0L, elapsedTicks - openingStart);
         int delay = Math.max(0, movement.getInt("delay-ticks", 0));
         int duration = Math.max(1, movement.getInt("duration-ticks", 20));
-        if (age <= delay) return base;
+        if (age <= delay)
+            return base;
 
         double progress = Math.max(0.0, Math.min(1.0, (age - delay) / (double) duration));
         double eased = movementCurve(progress, movement.getString("curve", "LINEAR"));
@@ -383,7 +421,8 @@ public final class IdleAnimationManager {
         if (display == null || !display.isValid() || display.getWorld() != loc.getWorld()) {
             removeItemVisual(key);
             ItemStack stack = buildDisplayItem(s);
-            if (stack == null || stack.getType().isAir()) return;
+            if (stack == null || stack.getType().isAir())
+                return;
 
             display = loc.getWorld().spawn(loc, ItemDisplay.class, d -> {
                 d.setPersistent(false);
@@ -406,7 +445,8 @@ public final class IdleAnimationManager {
             display.setViewRange((float) Math.max(0.1, s.getDouble("view-range", 1.0)));
             display.setTeleportDuration(Math.max(0, Math.min(59, s.getInt("teleport-duration-ticks", 1))));
             applyDisplayScale(display, s);
-            if (display.getLocation().distanceSquared(loc) > 0.000001) display.teleport(loc);
+            if (display.getLocation().distanceSquared(loc) > 0.000001)
+                display.teleport(loc);
         }
     }
 
@@ -415,7 +455,8 @@ public final class IdleAnimationManager {
         String mmoId = s.getString("mmoitems-id");
         if (mmoType != null && !mmoType.isBlank() && mmoId != null && !mmoId.isBlank()) {
             ItemStack mmo = plugin.mmoItemsHook().getPreviewItem(mmoType, mmoId, 1);
-            if (mmo != null && !mmo.getType().isAir()) return mmo;
+            if (mmo != null && !mmo.getType().isAir())
+                return mmo;
         }
 
         String raw = s.getString("material", "AMETHYST_CLUSTER");
@@ -437,8 +478,11 @@ public final class IdleAnimationManager {
     }
 
     private ItemDisplay.ItemDisplayTransform parseItemTransform(String raw) {
-        try { return ItemDisplay.ItemDisplayTransform.valueOf(raw.toUpperCase(Locale.ROOT)); }
-        catch (Exception ignored) { return ItemDisplay.ItemDisplayTransform.FIXED; }
+        try {
+            return ItemDisplay.ItemDisplayTransform.valueOf(raw.toUpperCase(Locale.ROOT));
+        } catch (Exception ignored) {
+            return ItemDisplay.ItemDisplayTransform.FIXED;
+        }
     }
 
     /**
@@ -446,10 +490,12 @@ public final class IdleAnimationManager {
      * Cada efecto tiene su propio interval-ticks y points-per-spawn.
      */
     private void drawRandomPoints(World world, Location base, ConfigurationSection randomPoints, long previousTicks) {
-        if (randomPoints == null) return;
+        if (randomPoints == null)
+            return;
         for (String id : randomPoints.getKeys(false)) {
             ConfigurationSection s = randomPoints.getConfigurationSection(id);
-            if (s == null || !s.getBoolean("enabled", true) || !shouldRun(s, previousTicks)) continue;
+            if (s == null || !s.getBoolean("enabled", true) || !shouldRun(s, previousTicks))
+                continue;
 
             ParticleSpec particle = ParticleSpec.of(s.getString("particle", "ENCHANT"), s.getInt("count", 1),
                     s.getDouble("spread", 0), ParticleSpec.configuredSpeed(s, "particle-speed", "extra", 0.0),
@@ -479,7 +525,8 @@ public final class IdleAnimationManager {
                             u * verticalRadius * radial,
                             Math.sin(theta) * rxy * radius * radial);
                 }
-                particle.spawn(world, base.getX() + offset.getX(), base.getY() + yOffset + offset.getY(), base.getZ() + offset.getZ());
+                particle.spawn(world, base.getX() + offset.getX(), base.getY() + yOffset + offset.getY(),
+                        base.getZ() + offset.getZ());
             }
         }
     }
@@ -525,14 +572,71 @@ public final class IdleAnimationManager {
         display.setViewRange((float) Math.max(0.1, s.getDouble("view-range", 1.0)));
     }
 
+    private void syncBelowNameDisplay(BlockKey key, Block block, CrateDefinition crate, boolean opening) {
+        ConfigurationSection s = crate.belowNameDisplaySection();
+        if (s == null || !s.getBoolean("enabled", true) || (opening && s.getBoolean("hide-during-opening", false))) {
+            TextDisplay belowDisplay = belowNameDisplays.remove(key);
+            removeDisplay(belowDisplay);
+            return;
+        }
+
+        // Hide below-name-display if no players are within the configured max distance
+        double maxDistance = s.getDouble("max-distance", 4.0);
+        Location crateCenter = block.getLocation().add(0.5, 0.5, 0.5);
+        if (block.getWorld().getNearbyPlayers(crateCenter, maxDistance).isEmpty()) {
+            TextDisplay belowDisplay = belowNameDisplays.remove(key);
+            removeDisplay(belowDisplay);
+            return;
+        }
+
+        TextDisplay display = belowNameDisplays.get(key);
+        Location loc = block.getLocation().add(
+                s.getDouble("offset.x", 0.5),
+                s.getDouble("offset.y", 1.2),
+                s.getDouble("offset.z", 0.5));
+        String rawText = s.getString("text", "");
+        String text = Text.color(rawText
+                .replace("{display-name}", crate.displayName())
+                .replace("{crate}", crate.id())
+                .replace("{id}", crate.id()));
+
+        if (display == null || !display.isValid() || display.getWorld() != block.getWorld()) {
+            TextDisplay belowDisplay = belowNameDisplays.remove(key);
+            removeDisplay(belowDisplay);
+            display = block.getWorld().spawn(loc, TextDisplay.class, d -> {
+                d.setPersistent(false);
+                d.setGravity(false);
+                d.setInvulnerable(true);
+                d.addScoreboardTag("mdvcrates_visual");
+                d.addScoreboardTag("mdvcrates_below_name");
+            });
+            belowNameDisplays.put(key, display);
+        } else if (display.getLocation().distanceSquared(loc) > 0.0001) {
+            display.teleport(loc);
+        }
+
+        display.setText(text);
+        display.setBillboard(parseBillboard(s.getString("billboard", "CENTER")));
+        display.setShadowed(s.getBoolean("shadowed", true));
+        display.setSeeThrough(s.getBoolean("see-through", false));
+        display.setDefaultBackground(s.getBoolean("default-background", false));
+        display.setLineWidth(Math.max(1, s.getInt("line-width", 200)));
+        display.setViewRange((float) Math.max(0.1, s.getDouble("view-range", 1.0)));
+    }
+
     private Display.Billboard parseBillboard(String raw) {
-        try { return Display.Billboard.valueOf(raw.toUpperCase(Locale.ROOT)); }
-        catch (Exception ignored) { return Display.Billboard.CENTER; }
+        try {
+            return Display.Billboard.valueOf(raw.toUpperCase(Locale.ROOT));
+        } catch (Exception ignored) {
+            return Display.Billboard.CENTER;
+        }
     }
 
     private void removeName(BlockKey key) {
         TextDisplay display = nameDisplays.remove(key);
         removeDisplay(display);
+        TextDisplay belowDisplay = belowNameDisplays.remove(key);
+        removeDisplay(belowDisplay);
     }
 
     private void removeItemVisual(VisualKey key) {
@@ -546,16 +650,20 @@ public final class IdleAnimationManager {
     }
 
     private void removeDisplay(TextDisplay display) {
-        if (display != null && display.isValid()) display.remove();
+        if (display != null && display.isValid())
+            display.remove();
     }
 
     private void removeDisplay(ItemDisplay display) {
-        if (display != null && display.isValid()) display.remove();
+        if (display != null && display.isValid())
+            display.remove();
     }
 
     private void removeDisplay(BlockDisplay display) {
-        if (display != null && display.isValid()) display.remove();
+        if (display != null && display.isValid())
+            display.remove();
     }
 
-    private record VisualKey(BlockKey crate, String group, int index) {}
+    private record VisualKey(BlockKey crate, String group, int index) {
+    }
 }
