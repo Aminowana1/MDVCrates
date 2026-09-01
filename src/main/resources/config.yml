@@ -1,5 +1,5 @@
 # ==========================================================
-# MDVCrates 1.2.1
+# MDVCrates 1.2.2
 # ==========================================================
 
 settings:
@@ -51,6 +51,45 @@ default-animations:
   idle:
     enabled: true
 
+    # ======================================================
+    # ITEM DISPLAYS ESTÁTICOS (1.2.2)
+    # ======================================================
+    # Sirve para colocar objetos/bloques visuales encima o alrededor
+    # de la crate. El offset parte de la esquina inferior del bloque,
+    # igual que name-display y roll.display-offset.
+    #
+    # También puede usar MMOItems con mmoitems-type + mmoitems-id.
+    #
+    # opening-movement mueve el MISMO ItemDisplay durante la apertura.
+    # offset.y: 1.0 + duration-ticks: 20 = sube 1 bloque en 1 segundo.
+    item-displays:
+      crystal_example:
+        enabled: false
+        material: AMETHYST_CLUSTER
+        offset:
+          x: 0.5
+          y: 1.55
+          z: 0.5
+        size: 0.65
+        # También puedes usar scale.x/y/z si no quieres escala uniforme.
+        transform: FIXED
+        billboard: FIXED
+        view-range: 1.0
+        # 1 suaviza el movimiento por teleports sin agregar delay perceptible.
+        teleport-duration-ticks: 1
+        shadow-radius: 0.0
+        shadow-strength: 0.0
+        hide-during-opening: false
+        opening-movement:
+          enabled: true
+          delay-ticks: 0
+          duration-ticks: 20
+          curve: LINEAR
+          offset:
+            x: 0.0
+            y: 1.0
+            z: 0.0
+
     # Los idle NO se apagan durante opening.
     rings:
       ring1:
@@ -101,6 +140,29 @@ default-animations:
         enabled: true
         particle: ENCHANT
         interval-ticks: 2
+
+        # Si agregas item-display:, la órbita deja de generar partículas
+        # y mueve el MISMO ItemDisplay por la trayectoria.
+        # Ideal para cubitos de CALCITE/GOLD_BLOCK, cristales, MMOItems, etc.
+        # item-display:
+        #   enabled: true
+        #   material: CALCITE
+        #   size: 0.14
+        #   transform: FIXED
+        #   billboard: FIXED
+        #   view-range: 1.0
+        #   teleport-duration-ticks: 1
+        #   hide-during-opening: false
+        #   opening-movement:
+        #     enabled: false
+        #     delay-ticks: 0
+        #     duration-ticks: 20
+        #     curve: LINEAR
+        #     offset:
+        #       x: 0.0
+        #       y: 1.0
+        #       z: 0.0
+
         # Cantidad de "lunas" distribuidas en la órbita.
         orbiters: 3
         radius: 1.30
@@ -109,6 +171,8 @@ default-animations:
         spread: 0.0
         particle-speed: 0.0
         angular-speed-deg-per-tick: 4.0
+        # Posición inicial en grados; útil para separar displays en rutas iguales.
+        phase-deg: 0.0
         random-plane: true
         tilt-deg:
           x: 25.0

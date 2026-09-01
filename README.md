@@ -1,6 +1,16 @@
-# MDVCrates 1.2.0
+# MDVCrates 1.2.2
 
 Plugin de crates físicas para Paper/Purpur 1.21.6, Java 21.
+
+## Novedades 1.2.2
+
+- `orbits` puede mover `ItemDisplay` reales además de partículas.
+- Cada orbiter es la misma entidad moviéndose por la trayectoria, sin dejar rastro.
+- Nuevo `idle.item-displays` para cristales/bloques/ítems flotantes estáticos.
+- `material` acepta cualquier Material Bukkit; también se admiten MMOItems por TYPE + ID.
+- `size` o `scale.x/y/z` controla el tamaño del ItemDisplay.
+- `opening-movement` permite desplazar displays al iniciar la apertura (X/Y/Z, delay, duración y curva).
+- `phase-deg` permite elegir la posición inicial de un orbiter.
 
 ## Novedades 1.2.0
 
@@ -181,4 +191,85 @@ También compila con Java 21 + Maven:
 mvn clean package
 ```
 
-El jar sale en `target/MDVCrates-1.2.0.jar`.
+El jar sale en `target/MDVCrates-1.2.2.jar`.
+
+## ItemDisplays de crate y órbitas 1.2.2
+
+### ItemDisplay real dentro de `orbits`
+
+Un orbit puede seguir usando partículas como siempre. Si contiene `item-display:`,
+el plugin crea una entidad `ItemDisplay` por orbiter y mueve ESA MISMA entidad por
+la trayectoria. No va dejando copias ni partículas detrás.
+
+```yaml
+orbits:
+  luna_calcita:
+    enabled: true
+    orbiters: 1
+    radius: 1.05
+    y-offset: 0.0
+    angular-speed-deg-per-tick: 2.4
+    phase-deg: 0.0
+    random-plane: false
+    tilt-deg:
+      x: 55.0
+      y: 0.0
+      z: 20.0
+    plane-rotation-deg-per-tick:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    item-display:
+      enabled: true
+      material: CALCITE
+      size: 0.14
+      transform: FIXED
+      billboard: FIXED
+      view-range: 1.0
+```
+
+`material` acepta cualquier `Material` de Bukkit. También se puede mostrar un
+MMOItem usando `mmoitems-type` + `mmoitems-id` dentro de `item-display`.
+
+### ItemDisplays estáticos
+
+`idle.item-displays` permite colocar objetos visuales en posiciones fijas respecto
+a la crate, por ejemplo un `AMETHYST_CLUSTER` flotando encima:
+
+```yaml
+item-displays:
+  cristal:
+    enabled: true
+    material: AMETHYST_CLUSTER
+    offset:
+      x: 0.5
+      y: 1.55
+      z: 0.5
+    size: 0.65
+    transform: FIXED
+    billboard: FIXED
+    hide-during-opening: false
+```
+
+### Movimiento al comenzar opening
+
+Tanto un display estático como el `item-display` de un orbit pueden incluir:
+
+```yaml
+opening-movement:
+  enabled: true
+  delay-ticks: 0
+  duration-ticks: 20
+  curve: LINEAR
+  offset:
+    x: 0.0
+    y: 1.0
+    z: 0.0
+```
+
+Esto mueve el mismo display 1 bloque hacia arriba durante los primeros 20 ticks
+de la apertura y luego lo mantiene en la posición final mientras siga abierta.
+Al terminar la apertura vuelve a su posición idle base.
+
+Curvas soportadas: `LINEAR`, `EASE_IN_QUAD`, `EASE_OUT_QUAD`,
+`EASE_IN_OUT_QUAD` y `EASE_OUT_CUBIC`.

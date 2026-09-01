@@ -1,0 +1,349 @@
+# ==========================================================
+# MDVCrates 1.2.2
+# Ejemplo: Caja de la Eternidad con ItemDisplays
+# ==========================================================
+#
+# - 2 cubitos de CALCITE en órbitas distintas.
+# - 2 cubitos de GOLD_BLOCK en órbitas distintas.
+# - 1 AMETHYST_CLUSTER flotando sobre la crate.
+# - Al iniciar opening, el cristal sube 1 bloque en 20 ticks.
+#
+# Los ItemDisplays orbitales son entidades reales: es el MISMO cubito
+# moviéndose por la trayectoria, no una cadena de partículas.
+# ==========================================================
+
+enabled: true
+
+display-name: '&5Caja de la &eEternidad'
+
+block-material: PURPLE_SHULKER_BOX
+
+key:
+  mmoitems-type: LLAVE
+  mmoitems-id: LLAVE_CAJA_ETERNIDAD
+
+viewer:
+  title: '&8Premios de &5Caja de la &eEternidad'
+  show-percentages: true
+
+name-display:
+  enabled: true
+  text: '&5&lCaja de la &e&lEternidad'
+
+  offset:
+    x: 0.5
+    y: 1.6
+    z: 0.5
+
+  billboard: CENTER
+  shadowed: true
+  see-through: false
+  hide-during-opening: true
+
+rewards:
+
+  item_1:
+    type: VANILLA
+    weight: 10.0
+    amount: 32
+    material: DIAMOND
+
+  item_2:
+    type: VANILLA
+    weight: 10.0
+    amount: 4
+    material: NETHERITE_INGOT
+
+animations:
+
+  idle:
+
+    enabled: true
+
+    # ------------------------------------------------------
+    # CRISTAL FLOTANTE SOBRE LA CRATE
+    # ------------------------------------------------------
+    item-displays:
+
+      cristal_eternidad:
+
+        enabled: true
+
+        material: AMETHYST_CLUSTER
+
+        offset:
+          x: 0.5
+          y: 1.55
+          z: 0.5
+
+        size: 0.65
+
+        transform: FIXED
+        billboard: FIXED
+
+        view-range: 1.0
+        teleport-duration-ticks: 1
+
+        shadow-radius: 0.0
+        shadow-strength: 0.0
+
+        hide-during-opening: false
+
+        opening-movement:
+
+          enabled: true
+
+          delay-ticks: 0
+          duration-ticks: 20
+
+          curve: LINEAR
+
+          offset:
+            x: 0.0
+            y: 1.0
+            z: 0.0
+
+
+    # ------------------------------------------------------
+    # CUATRO CUERPOS ORBITALES TIPO ÁTOMO
+    # ------------------------------------------------------
+    orbits:
+
+      # ----------------------------------------------------
+      # CALCITA 1
+      # ----------------------------------------------------
+      eternidad_calcita_1:
+
+        enabled: true
+
+        orbiters: 1
+
+        radius: 1.05
+        y-offset: 0.0
+
+        angular-speed-deg-per-tick: 2.4
+        phase-deg: 0.0
+
+        random-plane: false
+
+        tilt-deg:
+          x: 55.0
+          y: 0.0
+          z: 20.0
+
+        plane-rotation-deg-per-tick:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+
+        item-display:
+
+          enabled: true
+
+          material: CALCITE
+
+          size: 0.14
+
+          transform: FIXED
+          billboard: FIXED
+
+          view-range: 1.0
+          teleport-duration-ticks: 1
+
+          hide-during-opening: false
+
+
+      # ----------------------------------------------------
+      # CALCITA 2
+      # ----------------------------------------------------
+      eternidad_calcita_2:
+
+        enabled: true
+
+        orbiters: 1
+
+        radius: 1.05
+        y-offset: 0.0
+
+        angular-speed-deg-per-tick: -2.2
+        phase-deg: 90.0
+
+        random-plane: false
+
+        tilt-deg:
+          x: -55.0
+          y: 0.0
+          z: -20.0
+
+        plane-rotation-deg-per-tick:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+
+        item-display:
+
+          enabled: true
+
+          material: CALCITE
+
+          size: 0.14
+
+          transform: FIXED
+          billboard: FIXED
+
+          view-range: 1.0
+          teleport-duration-ticks: 1
+
+          hide-during-opening: false
+
+
+      # ----------------------------------------------------
+      # DORADO 1
+      # ----------------------------------------------------
+      eternidad_dorado_1:
+
+        enabled: true
+
+        orbiters: 1
+
+        radius: 1.18
+        y-offset: 0.0
+
+        angular-speed-deg-per-tick: 2.8
+        phase-deg: 180.0
+
+        random-plane: false
+
+        tilt-deg:
+          x: 25.0
+          y: 0.0
+          z: 65.0
+
+        plane-rotation-deg-per-tick:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+
+        item-display:
+
+          enabled: true
+
+          material: GOLD_BLOCK
+
+          size: 0.14
+
+          transform: FIXED
+          billboard: FIXED
+
+          view-range: 1.0
+          teleport-duration-ticks: 1
+
+          hide-during-opening: false
+
+
+      # ----------------------------------------------------
+      # DORADO 2
+      # ----------------------------------------------------
+      eternidad_dorado_2:
+
+        enabled: true
+
+        orbiters: 1
+
+        radius: 1.18
+        y-offset: 0.0
+
+        angular-speed-deg-per-tick: -2.6
+        phase-deg: 270.0
+
+        random-plane: false
+
+        tilt-deg:
+          x: -25.0
+          y: 0.0
+          z: -65.0
+
+        plane-rotation-deg-per-tick:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+
+        item-display:
+
+          enabled: true
+
+          material: GOLD_BLOCK
+
+          size: 0.14
+
+          transform: FIXED
+          billboard: FIXED
+
+          view-range: 1.0
+          teleport-duration-ticks: 1
+
+          hide-during-opening: false
+
+
+  opening:
+
+    suction:
+
+      enabled: true
+
+      particle: WAX_ON
+
+      radius: 2.0
+      center-y-offset: 0.20
+
+      spawn-interval-ticks: 2
+      motes-per-spawn: 4
+
+      travel-ticks-min: 12
+      travel-ticks-max: 20
+
+      count: 1
+      spread: 0.0
+      particle-speed: 0.0
+      extra: 0.0
+
+    roll:
+
+      steps: 41
+
+      initial-delay-ticks: 2
+      final-delay-ticks: 25
+
+      curve: EASE_IN_QUAD
+
+      display-offset:
+        x: 0.5
+        y: 0.60
+        z: 0.5
+
+      name-offset-y: 1.2
+      show-name: true
+      display-scale: 1.0
+      spin-deg-per-tick: 10.0
+
+      change-sound: BLOCK_NOTE_BLOCK_HAT
+      change-sound-volume: 0.60
+      change-sound-pitch: 1.55
+
+    finish:
+
+      pause-before-burst-ticks: 10
+
+      rise-ticks: 18
+      rise-height: 0.0
+
+      burst-particle: WAX_ON
+      burst-count: 35
+      burst-spread: 0.25
+      burst-extra: 0.0
+
+      reward-sound: UI_TOAST_CHALLENGE_COMPLETE
+      reward-sound-volume: 1.0
+      reward-sound-pitch: 1.0
+
+      close-delay-ticks: 9
