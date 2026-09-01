@@ -58,7 +58,7 @@ public final class MDVCratesPlugin extends JavaPlugin {
         Objects.requireNonNull(getCommand("mdvcrates")).setTabCompleter(command);
 
         idleAnimationManager.start();
-        getLogger().info("MDVCrates 1.1.3 habilitado. Crates cargadas: " + crateRepository.all().size());
+        getLogger().info("MDVCrates 1.2.0 habilitado. Crates cargadas: " + crateRepository.all().size());
     }
 
     @Override

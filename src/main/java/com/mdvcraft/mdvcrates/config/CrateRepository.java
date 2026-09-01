@@ -3,9 +3,10 @@ package com.mdvcraft.mdvcrates.config;
 import com.mdvcraft.mdvcrates.MDVCratesPlugin;
 import com.mdvcraft.mdvcrates.hook.MMOItemsHook;
 import com.mdvcraft.mdvcrates.model.*;
-import com.mdvcraft.mdvcrates.util.ItemStackCodec;
 import com.mdvcraft.mdvcrates.util.CrateBlocks;
+import com.mdvcraft.mdvcrates.util.ItemStackCodec;
 import com.mdvcraft.mdvcrates.util.Text;
+import com.mdvcraft.mdvcrates.util.VanillaItemUtil;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -14,46 +15,65 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.logging.Level;
 
 public final class CrateRepository {
     private final MDVCratesPlugin plugin;
     private final MMOItemsHook mmoItems;
-    private final File file;
+    private final File cratesDirectory;
+    private final File legacyFile;
     private final File placementsFile;
-    private YamlConfiguration yaml;
     private YamlConfiguration placementsYaml;
     private final Map<String, CrateDefinition> crates = new LinkedHashMap<>();
+    private final Map<String, CrateFile> crateFiles = new LinkedHashMap<>();
 
     public CrateRepository(MDVCratesPlugin plugin, MMOItemsHook mmoItems) {
         this.plugin = plugin;
         this.mmoItems = mmoItems;
-        this.file = new File(plugin.getDataFolder(), "crates.yml");
+        this.cratesDirectory = new File(plugin.getDataFolder(), "crates");
+        this.legacyFile = new File(plugin.getDataFolder(), "crates.yml");
         this.placementsFile = new File(plugin.getDataFolder(), "placements.yml");
         reload();
     }
 
     public synchronized void reload() {
-        if (!file.exists()) plugin.saveResource("crates.yml", false);
+        if (!plugin.getDataFolder().exists()) plugin.getDataFolder().mkdirs();
+        if (!cratesDirectory.exists() && !cratesDirectory.mkdirs()) {
+            plugin.getLogger().severe("No se pudo crear la carpeta crates/.");
+        }
         if (!placementsFile.exists()) plugin.saveResource("placements.yml", false);
-
-        yaml = YamlConfiguration.loadConfiguration(file);
         placementsYaml = YamlConfiguration.loadConfiguration(placementsFile);
 
-        // 1.1.2+: las ubicaciones físicas viven fuera de crates.yml.
-        // Esto permite reemplazar/editar una definición y hacer /mdvcrates reload
-        // sin tener que volver a colocar las crates que ya existen en el mundo.
-        migrateLegacyLocations();
+        // 1.2.0: cada crate vive en plugins/MDVCrates/crates/<id>.yml.
+        // Si existe el antiguo crates.yml, se separa automáticamente y luego se
+        // conserva como backup para que no se pierda nada.
+        migrateLegacyCratesFile();
+        ensureExampleCrate();
 
         crates.clear();
-        ConfigurationSection root = yaml.getConfigurationSection("crates");
-        if (root == null) return;
-        for (String id : root.getKeys(false)) {
-            ConfigurationSection sec = root.getConfigurationSection(id);
-            if (sec == null) continue;
-            CrateDefinition def = parse(id, sec);
-            crates.put(id.toLowerCase(Locale.ROOT), def);
+        crateFiles.clear();
+
+        for (File crateFile : listCrateFiles()) {
+            String id = stripYamlExtension(crateFile.getName());
+            if (id.isBlank()) continue;
+
+            YamlConfiguration crateYaml = YamlConfiguration.loadConfiguration(crateFile);
+            boolean changed = false;
+            changed |= migrateLegacyLocations(id, crateYaml);
+            changed |= migratePlainVanillaItemRewards(id, crateYaml);
+            if (changed) saveCrateFile(crateFile, crateYaml);
+
+            CrateDefinition def = parse(id, crateYaml);
+            String key = id.toLowerCase(Locale.ROOT);
+            if (crateFiles.containsKey(key)) {
+                plugin.getLogger().warning("Hay más de un archivo de crate con la ID '" + id + "'. Se ignorará " + crateFile.getName() + ".");
+                continue;
+            }
+            crateFiles.put(key, new CrateFile(crateFile, crateYaml));
+            crates.put(key, def);
         }
     }
 
@@ -71,21 +91,27 @@ public final class CrateRepository {
 
     public synchronized boolean create(String id) {
         if (id == null || id.isBlank() || exists(id)) return false;
-        String path = "crates." + id;
-        yaml.set(path + ".enabled", true);
-        yaml.set(path + ".display-name", "&6&l" + id);
-        yaml.set(path + ".block-material", "CHEST");
-        yaml.set(path + ".key.mmoitems-type", "LLAVE");
-        yaml.set(path + ".key.mmoitems-id", "LLAVE_" + id.toUpperCase(Locale.ROOT));
-        yaml.set(path + ".viewer.show-percentages", true);
-        yaml.set(path + ".name-display.enabled", true);
-        yaml.set(path + ".name-display.text", "{display-name}");
-        yaml.set(path + ".name-display.offset.x", 0.5);
-        yaml.set(path + ".name-display.offset.y", 1.85);
-        yaml.set(path + ".name-display.offset.z", 0.5);
-        yaml.set(path + ".name-display.hide-during-opening", false);
-        yaml.createSection(path + ".rewards");
-        saveFile();
+        if (!cratesDirectory.exists()) cratesDirectory.mkdirs();
+
+        File file = new File(cratesDirectory, id + ".yml");
+        if (file.exists()) return false;
+
+        YamlConfiguration yaml = new YamlConfiguration();
+        yaml.set("enabled", true);
+        yaml.set("display-name", "&6&l" + id);
+        yaml.set("block-material", "CHEST");
+        yaml.set("key.mmoitems-type", "LLAVE");
+        yaml.set("key.mmoitems-id", "LLAVE_" + id.toUpperCase(Locale.ROOT));
+        yaml.set("viewer.show-percentages", true);
+        yaml.set("name-display.enabled", true);
+        yaml.set("name-display.text", "{display-name}");
+        yaml.set("name-display.offset.x", 0.5);
+        yaml.set("name-display.offset.y", 1.85);
+        yaml.set("name-display.offset.z", 0.5);
+        yaml.set("name-display.hide-during-opening", false);
+        yaml.createSection("rewards");
+        if (!saveCrateFile(file, yaml)) return false;
+
         placementsYaml.set("placements." + id, new ArrayList<String>());
         savePlacementsFile();
         reload();
@@ -100,11 +126,18 @@ public final class CrateRepository {
     }
 
     public synchronized void replaceItemRewards(String crateId, List<Reward> editedRewards) {
-        String rewardsPath = "crates." + crateId + ".rewards";
+        CrateFile crateFile = crateFiles.get(crateId.toLowerCase(Locale.ROOT));
+        if (crateFile == null) {
+            plugin.getLogger().warning("No se pudo guardar rewards: no existe el archivo de la crate '" + crateId + "'.");
+            return;
+        }
+
+        YamlConfiguration yaml = crateFile.yaml();
+        String rewardsPath = "rewards";
         ConfigurationSection sec = yaml.getConfigurationSection(rewardsPath);
         if (sec == null) sec = yaml.createSection(rewardsPath);
 
-        // Las recompensas COMMAND solo se editan manualmente en YAML.
+        // Las recompensas COMMAND solo se editan manualmente en el YAML de esta crate.
         for (String key : new HashSet<>(sec.getKeys(false))) {
             String type = sec.getString(key + ".type", "ITEM");
             if (!"COMMAND".equalsIgnoreCase(type)) sec.set(key, null);
@@ -129,20 +162,25 @@ public final class CrateRepository {
             if (reward.displayName() != null && !reward.displayName().isBlank()) {
                 yaml.set(p + ".name", reward.displayName());
             }
+
             if (reward.type() == RewardType.MMOITEM) {
                 yaml.set(p + ".mmoitems-type", reward.mmoItemsType());
                 yaml.set(p + ".mmoitems-id", reward.mmoItemsId());
+            } else if (reward.type() == RewardType.VANILLA && reward.vanillaMaterial() != null) {
+                yaml.set(p + ".material", reward.vanillaMaterial().name());
             } else if (reward.type() == RewardType.ITEM && reward.storedItem() != null) {
                 yaml.set(p + ".item.format", "BUKKIT_BYTES_BASE64");
                 yaml.set(p + ".item.data", ItemStackCodec.encode(reward.storedItem()));
             }
         }
-        saveFile();
-        reload();
+
+        if (saveCrateFile(crateFile.file(), yaml)) reload();
     }
 
+    /** Devuelve la raíz del YAML individual de la crate. */
     public ConfigurationSection rawSection(String crateId) {
-        return yaml.getConfigurationSection("crates." + crateId);
+        CrateFile crateFile = crateId == null ? null : crateFiles.get(crateId.toLowerCase(Locale.ROOT));
+        return crateFile == null ? null : crateFile.yaml();
     }
 
     private CrateDefinition parse(String id, ConfigurationSection sec) {
@@ -166,7 +204,7 @@ public final class CrateRepository {
             for (String rewardId : rewardsSec.getKeys(false)) {
                 ConfigurationSection rs = rewardsSec.getConfigurationSection(rewardId);
                 if (rs == null) continue;
-                Reward reward = parseReward(rewardId, rs);
+                Reward reward = parseReward(id, rewardId, rs);
                 if (reward != null) rewards.add(reward);
             }
         }
@@ -185,20 +223,16 @@ public final class CrateRepository {
         return new CrateDefinition(id, enabled, displayName, block, key, locations, rewards, animations, viewer, nameDisplay);
     }
 
-    private Reward parseReward(String id, ConfigurationSection rs) {
+    private Reward parseReward(String crateId, String id, ConfigurationSection rs) {
         RewardType type;
         try {
             type = RewardType.valueOf(rs.getString("type", "ITEM").toUpperCase(Locale.ROOT));
         } catch (Exception ex) {
-            plugin.getLogger().warning("Reward '" + id + "' tiene type inválido.");
+            plugin.getLogger().warning("Reward '" + crateId + ":" + id + "' tiene type inválido.");
             return null;
         }
         double weight = Math.max(0, rs.getDouble("weight", 1.0));
 
-        // chance/probability es opcional. No usar un ternario mezclando double y null:
-        // Java puede intentar desempaquetar el null como Double#doubleValue(), lo que
-        // provocaba un NPE al guardar desde el editor cualquier reward nuevo que
-        // utilizara solo weight (por ejemplo un MMOItem recién añadido).
         Double chance = null;
         if (rs.contains("chance")) {
             chance = clampPercent(rs.getDouble("chance"));
@@ -212,11 +246,19 @@ public final class CrateRepository {
 
         switch (type) {
             case MMOITEM -> b.mmoItems(rs.getString("mmoitems-type"), rs.getString("mmoitems-id"));
+            case VANILLA -> {
+                Material material = Material.matchMaterial(rs.getString("material", ""));
+                if (material == null || material.isAir() || !material.isItem()) {
+                    plugin.getLogger().warning("Reward VANILLA '" + crateId + ":" + id + "' usa material inválido.");
+                    return null;
+                }
+                b.vanillaMaterial(material);
+            }
             case ITEM -> {
                 String encoded = rs.getString("item.data");
                 ItemStack item = ItemStackCodec.decode(encoded);
                 if (item == null) {
-                    plugin.getLogger().warning("Reward ITEM '" + id + "' no pudo deserializarse.");
+                    plugin.getLogger().warning("Reward ITEM '" + crateId + ":" + id + "' no pudo deserializarse.");
                     return null;
                 }
                 b.storedItem(item);
@@ -258,29 +300,140 @@ public final class CrateRepository {
         return locations;
     }
 
-    /**
-     * Migra una sola vez las listas locations: antiguas de crates.yml.
-     * Si placements.yml ya conoce una crate, incluso con lista vacía, esa
-     * entrada manda y locations: deja de afectar a las colocaciones reales.
-     */
-    private void migrateLegacyLocations() {
-        ConfigurationSection root = yaml.getConfigurationSection("crates");
-        if (root == null) return;
+    private boolean migrateLegacyLocations(String crateId, YamlConfiguration crateYaml) {
+        String placementPath = "placements." + crateId;
+        boolean crateChanged = false;
 
-        boolean changed = false;
-        for (String id : root.getKeys(false)) {
-            String placementPath = "placements." + id;
-            if (placementsYaml.contains(placementPath)) continue;
-
-            ConfigurationSection sec = root.getConfigurationSection(id);
-            List<String> legacy = sec == null ? List.of() : sec.getStringList("locations");
+        if (!placementsYaml.contains(placementPath)) {
+            List<String> legacy = crateYaml.getStringList("locations");
             placementsYaml.set(placementPath, new ArrayList<>(legacy));
             if (!legacy.isEmpty()) {
-                plugin.getLogger().info("Migradas " + legacy.size() + " ubicación(es) de la crate '" + id + "' a placements.yml.");
+                plugin.getLogger().info("Migradas " + legacy.size() + " ubicación(es) de la crate '" + crateId + "' a placements.yml.");
             }
-            changed = true;
+            savePlacementsFile();
         }
-        if (changed) savePlacementsFile();
+
+        if (crateYaml.contains("locations")) {
+            crateYaml.set("locations", null);
+            crateChanged = true;
+        }
+        return crateChanged;
+    }
+
+    /**
+     * Convierte automáticamente los antiguos ITEM/Base64 que realmente son un
+     * stack vanilla sin metadata a VANILLA + material. Los ItemStack custom se
+     * mantienen intactos en Base64.
+     */
+    private boolean migratePlainVanillaItemRewards(String crateId, YamlConfiguration crateYaml) {
+        ConfigurationSection rewards = crateYaml.getConfigurationSection("rewards");
+        if (rewards == null) return false;
+
+        boolean changed = false;
+        int migrated = 0;
+        for (String rewardId : rewards.getKeys(false)) {
+            ConfigurationSection rs = rewards.getConfigurationSection(rewardId);
+            if (rs == null || !"ITEM".equalsIgnoreCase(rs.getString("type", "ITEM"))) continue;
+
+            ItemStack item = ItemStackCodec.decode(rs.getString("item.data"));
+            if (!VanillaItemUtil.isPlainVanilla(item)) continue;
+
+            rs.set("type", "VANILLA");
+            rs.set("material", item.getType().name());
+            rs.set("item", null);
+            changed = true;
+            migrated++;
+        }
+        if (migrated > 0) {
+            plugin.getLogger().info("Crate '" + crateId + "': migradas " + migrated + " recompensa(s) vanilla de Base64 a material simple.");
+        }
+        return changed;
+    }
+
+    private void migrateLegacyCratesFile() {
+        if (!legacyFile.exists() || !legacyFile.isFile()) return;
+
+        YamlConfiguration legacy = YamlConfiguration.loadConfiguration(legacyFile);
+        ConfigurationSection root = legacy.getConfigurationSection("crates");
+        if (root == null) {
+            plugin.getLogger().warning("Existe crates.yml pero no contiene la sección 'crates'. No se migrará automáticamente.");
+            return;
+        }
+
+        int migrated = 0;
+        boolean failed = false;
+        for (String id : root.getKeys(false)) {
+            ConfigurationSection source = root.getConfigurationSection(id);
+            if (source == null) continue;
+
+            File destination = new File(cratesDirectory, id + ".yml");
+            if (destination.exists()) continue;
+
+            YamlConfiguration target = new YamlConfiguration();
+            copySection(source, target);
+            if (saveCrateFile(destination, target)) migrated++;
+            else failed = true;
+        }
+
+        if (failed) {
+            plugin.getLogger().warning("La migración de crates.yml no terminó correctamente. Se conserva el archivo original para reintentar.");
+            return;
+        }
+
+        File backup = nextLegacyBackupFile();
+        try {
+            Files.move(legacyFile.toPath(), backup.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            plugin.getLogger().info("Migración 1.2.0 completada: " + migrated + " crate(s) separadas en crates/. Backup: " + backup.getName());
+        } catch (IOException ex) {
+            plugin.getLogger().log(Level.WARNING, "Las crates se migraron, pero no se pudo renombrar crates.yml como backup. No se borró ningún dato.", ex);
+        }
+    }
+
+    private void copySection(ConfigurationSection source, ConfigurationSection target) {
+        for (String key : source.getKeys(false)) {
+            if (source.isConfigurationSection(key)) {
+                ConfigurationSection childSource = source.getConfigurationSection(key);
+                ConfigurationSection childTarget = target.createSection(key);
+                if (childSource != null) copySection(childSource, childTarget);
+            } else {
+                target.set(key, source.get(key));
+            }
+        }
+    }
+
+    private void ensureExampleCrate() {
+        if (!listCrateFiles().isEmpty()) return;
+        try {
+            plugin.saveResource("crates/caja1.yml", false);
+        } catch (IllegalArgumentException ex) {
+            plugin.getLogger().warning("No se encontró el recurso crates/caja1.yml dentro del JAR.");
+        }
+    }
+
+    private List<File> listCrateFiles() {
+        File[] files = cratesDirectory.listFiles((dir, name) -> name.toLowerCase(Locale.ROOT).endsWith(".yml"));
+        if (files == null || files.length == 0) return List.of();
+        return Arrays.stream(files)
+                .filter(File::isFile)
+                .sorted(Comparator.comparing(File::getName, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+    }
+
+    private String stripYamlExtension(String name) {
+        if (name == null) return "";
+        String lower = name.toLowerCase(Locale.ROOT);
+        return lower.endsWith(".yml") ? name.substring(0, name.length() - 4) : name;
+    }
+
+    private File nextLegacyBackupFile() {
+        File preferred = new File(plugin.getDataFolder(), "crates.yml.migrated-backup");
+        if (!preferred.exists()) return preferred;
+        int i = 2;
+        while (true) {
+            File candidate = new File(plugin.getDataFolder(), "crates.yml.migrated-backup-" + i);
+            if (!candidate.exists()) return candidate;
+            i++;
+        }
     }
 
     private void savePlacementsFile() {
@@ -291,11 +444,17 @@ public final class CrateRepository {
         }
     }
 
-    private void saveFile() {
+    private boolean saveCrateFile(File file, YamlConfiguration yaml) {
         try {
+            File parent = file.getParentFile();
+            if (parent != null && !parent.exists()) parent.mkdirs();
             yaml.save(file);
+            return true;
         } catch (IOException ex) {
-            plugin.getLogger().log(Level.SEVERE, "No se pudo guardar crates.yml", ex);
+            plugin.getLogger().log(Level.SEVERE, "No se pudo guardar " + file.getPath(), ex);
+            return false;
         }
     }
+
+    private record CrateFile(File file, YamlConfiguration yaml) {}
 }

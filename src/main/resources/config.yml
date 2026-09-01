@@ -1,5 +1,5 @@
 # ==========================================================
-# MDVCrates 1.1.3
+# MDVCrates 1.2.0
 # ==========================================================
 
 settings:
@@ -11,6 +11,9 @@ settings:
 
 editor:
   size: 54
+  # Cantidad de recompensas visibles por página. Máximo 45 con inventario de 54.
+  rewards-per-page: 45
+  # Compatibilidad con configs viejas; solo se usa si falta rewards-per-page.
   reward-slots: 45
   default-new-item-weight: 10.0
   show-command-rewards: true

@@ -130,6 +130,12 @@ public final class RewardService {
         if (reward == null) return null;
         return switch (reward.type()) {
             case MMOITEM -> mmoItems.getPreviewItem(reward.mmoItemsType(), reward.mmoItemsId(), Math.min(reward.amount(), 64));
+            case VANILLA -> {
+                if (reward.vanillaMaterial() == null || reward.vanillaMaterial().isAir()) yield null;
+                ItemStack item = new ItemStack(reward.vanillaMaterial());
+                item.setAmount(Math.min(reward.amount(), Math.max(1, item.getMaxStackSize())));
+                yield item;
+            }
             case ITEM -> {
                 ItemStack item = reward.storedItem();
                 if (item != null) item.setAmount(Math.min(reward.amount(), Math.max(1, item.getMaxStackSize())));
@@ -151,7 +157,11 @@ public final class RewardService {
     }
 
     public PendingReward snapshot(String crateId, Reward reward, int reservedSlot) {
-        ItemStack item = reward.type() == RewardType.ITEM ? reward.storedItem() : null;
+        ItemStack item = switch (reward.type()) {
+            case ITEM -> reward.storedItem();
+            case VANILLA -> reward.vanillaMaterial() == null ? null : new ItemStack(reward.vanillaMaterial());
+            default -> null;
+        };
         return new PendingReward(
                 UUID.randomUUID().toString(), crateId, reward.type(), displayName(reward), reward.amount(),
                 reward.mmoItemsType(), reward.mmoItemsId(), item, reward.commands(), reservedSlot);

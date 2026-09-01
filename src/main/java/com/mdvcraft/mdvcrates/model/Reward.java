@@ -1,5 +1,6 @@
 package com.mdvcraft.mdvcrates.model;
 
+import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
@@ -15,6 +16,7 @@ public final class Reward {
     private final String displayName;
     private final String mmoItemsType;
     private final String mmoItemsId;
+    private final Material vanillaMaterial;
     private final ItemStack storedItem;
     private final List<String> commands;
     private final ItemStack commandPreview;
@@ -28,6 +30,7 @@ public final class Reward {
         this.displayName = b.displayName;
         this.mmoItemsType = b.mmoItemsType;
         this.mmoItemsId = b.mmoItemsId;
+        this.vanillaMaterial = b.vanillaMaterial;
         this.storedItem = b.storedItem == null ? null : b.storedItem.clone();
         this.commands = Collections.unmodifiableList(new ArrayList<>(b.commands));
         this.commandPreview = b.commandPreview == null ? null : b.commandPreview.clone();
@@ -42,6 +45,7 @@ public final class Reward {
     public String displayName() { return displayName; }
     public String mmoItemsType() { return mmoItemsType; }
     public String mmoItemsId() { return mmoItemsId; }
+    public Material vanillaMaterial() { return vanillaMaterial; }
     public ItemStack storedItem() { return storedItem == null ? null : storedItem.clone(); }
     public List<String> commands() { return commands; }
     public ItemStack commandPreview() { return commandPreview == null ? null : commandPreview.clone(); }
@@ -53,6 +57,7 @@ public final class Reward {
                 .amount(amount)
                 .displayName(displayName)
                 .mmoItems(mmoItemsType, mmoItemsId)
+                .vanillaMaterial(vanillaMaterial)
                 .storedItem(storedItem)
                 .commands(commands)
                 .commandPreview(commandPreview);
@@ -71,6 +76,7 @@ public final class Reward {
         private String displayName;
         private String mmoItemsType;
         private String mmoItemsId;
+        private Material vanillaMaterial;
         private ItemStack storedItem;
         private List<String> commands = new ArrayList<>();
         private ItemStack commandPreview;
@@ -85,6 +91,7 @@ public final class Reward {
         public Builder amount(int amount) { this.amount = amount; return this; }
         public Builder displayName(String displayName) { this.displayName = displayName; return this; }
         public Builder mmoItems(String type, String id) { this.mmoItemsType = type; this.mmoItemsId = id; return this; }
+        public Builder vanillaMaterial(Material material) { this.vanillaMaterial = material; return this; }
         public Builder storedItem(ItemStack item) { this.storedItem = item == null ? null : item.clone(); return this; }
         public Builder commands(List<String> commands) { this.commands = commands == null ? new ArrayList<>() : new ArrayList<>(commands); return this; }
         public Builder commandPreview(ItemStack item) { this.commandPreview = item == null ? null : item.clone(); return this; }

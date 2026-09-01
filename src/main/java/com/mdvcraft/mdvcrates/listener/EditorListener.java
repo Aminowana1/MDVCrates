@@ -31,20 +31,30 @@ public final class EditorListener implements Listener {
         int raw = event.getRawSlot();
         int topSize = top.getSize();
         int base = topSize - 9;
-        int rewardSlots = Math.min(plugin.getConfig().getInt("editor.reward-slots", 45), topSize - 9);
+        int pageSize = Math.max(1, Math.min(
+                plugin.getConfig().getInt("editor.rewards-per-page", plugin.getConfig().getInt("editor.reward-slots", 45)),
+                topSize - 9));
 
         if (raw >= 0 && raw < topSize) {
             event.setCancelled(true);
+            if (raw == base) {
+                plugin.editorManager().previousPage(player);
+                return;
+            }
             if (raw == base + 4) {
                 plugin.editorManager().save(player);
                 player.closeInventory();
+                return;
+            }
+            if (raw == base + 7) {
+                plugin.editorManager().nextPage(player);
                 return;
             }
             if (raw == base + 8) {
                 player.closeInventory();
                 return;
             }
-            if (raw < rewardSlots) plugin.editorManager().removeSlot(player, raw);
+            if (raw < pageSize) plugin.editorManager().removeSlot(player, raw);
             return;
         }
 

@@ -1,166 +1,141 @@
-# MDVCrates 1.1.3
-
-## Fix 1.1.3
-
-- Corrige el `NullPointerException` de `CrateRepository.parseReward` al guardar desde el editor recompensas nuevas sin `chance` explícito.
-- Los rewards añadidos desde `/mdvcrates editor <crate>` pueden usar únicamente `weight`, tanto si son MMOItems como ItemStacks custom.
-- `chance` y el alias `probability` siguen siendo opcionales y se limitan de 0 a 100.
+# MDVCrates 1.2.0
 
 Plugin de crates físicas para Paper/Purpur 1.21.6, Java 21.
+
+## Novedades 1.2.0
+
+### Crates separadas por archivo
+
+Las definiciones ahora viven en:
+
+```text
+plugins/MDVCrates/crates/
+  caja1.yml
+  caja_evento.yml
+  caja_vip.yml
+```
+
+Cada archivo contiene directamente la definición de una crate, sin el antiguo bloque `crates:`.
+
+Al arrancar 1.2.0, si existe el antiguo `plugins/MDVCrates/crates.yml`, el plugin:
+
+1. crea automáticamente un YAML por crate dentro de `crates/`;
+2. conserva `placements.yml` por separado;
+3. renombra el archivo antiguo a `crates.yml.migrated-backup` (o un nombre numerado si ya existe un backup).
+
+No hace falta migrar las crates a mano.
+
+### Vanilla sin Base64
+
+Los objetos vanilla simples ahora se guardan así:
+
+```yaml
+rewards:
+  diamantes:
+    type: VANILLA
+    weight: 10.0
+    amount: 5
+    material: DIAMOND
+```
+
+Si una recompensa antigua era `type: ITEM` + `BUKKIT_BYTES_BASE64` pero al decodificarla resulta ser un ItemStack vanilla sin metadata, 1.2.0 la convierte automáticamente a `VANILLA` + `material`.
+
+Los objetos custom no-MMOItems que sí tengan metadata/componentes continúan como `ITEM` Base64 para no perder información.
+
+Los MMOItems continúan guardándose como `MMOITEM` con TYPE + ID.
+
+### Editor con paginación
+
+`/mdvcrates editor <id>` ya no tiene límite práctico de 45 recompensas. El editor mantiene todas las recompensas en memoria durante la sesión y permite navegar con **Página anterior** / **Página siguiente**. Al guardar o cerrar se guardan todas las páginas.
+
+El visualizador público ya tenía paginación y la conserva.
+
+Configuración:
+
+```yaml
+editor:
+  size: 54
+  rewards-per-page: 45
+  default-new-item-weight: 10.0
+  show-command-rewards: true
+```
+
+## Tipos de recompensa
+
+### VANILLA
+
+```yaml
+hierro:
+  type: VANILLA
+  weight: 20
+  amount: 8
+  material: IRON_INGOT
+```
+
+### MMOITEM
+
+```yaml
+piedra_lunar:
+  type: MMOITEM
+  weight: 10
+  amount: 1
+  mmoitems-type: MATERIAL
+  mmoitems-id: PIEDRA_LUNAR
+```
+
+### ITEM custom no-MMOItems
+
+Los crea automáticamente el editor cuando el ItemStack contiene metadata/componentes que deben conservarse. Se guarda como snapshot Base64.
+
+### COMMAND
+
+```yaml
+rango:
+  type: COMMAND
+  chance: 5
+  amount: 1
+  name: "&6Rango especial"
+  commands:
+    - "lp user {player} parent addtemp vip 7d"
+  preview:
+    material: NETHER_STAR
+    name: "&6&lRango especial"
+```
+
+## Probabilidades
+
+- Solo `weight`: reparto proporcional clásico.
+- `chance`: porcentaje explícito de 0 a 100.
+- Si se mezclan, los `chance` reservan su porcentaje y el restante se reparte por `weight`.
+- Si todos usan `chance` y no suman 100, se normalizan para que cada apertura siga dando una recompensa.
 
 ## Funciones principales
 
 - Crates físicas registradas por ubicación.
-- Las ubicaciones físicas se guardan aparte en `placements.yml`: puedes editar o reemplazar `crates.yml` y usar `/mdvcrates reload` sin volver a colocar las crates.
-- `/mdvcrates reload` refresca automáticamente las crates colocadas en chunks cargados; las de chunks descargados se sincronizan al cargarse, sin forzar chunks.
-- Bloques soportados: `CHEST`, `TRAPPED_CHEST`, `ENDER_CHEST`, `SHULKER_BOX` y todos los colores de shulker.
+- Ubicaciones en `placements.yml`, independientes de las definiciones.
+- `/mdvcrates reload` refresca crates colocadas en chunks cargados.
+- Bloques soportados: `CHEST`, `TRAPPED_CHEST`, `ENDER_CHEST` y shulkers de cualquier color.
 - Llaves MMOItems verificadas por TYPE + ID.
-- Click derecho con la llave correcta: abre la crate.
-- Click izquierdo sobre una crate registrada: abre el visualizador de recompensas aunque no tengas la llave o tengas otra llave en la mano; nunca consume llave.
-- Consume exactamente 1 llave por apertura y solo después de validar todo.
-- Requiere al menos 1 slot libre antes de consumir la llave.
-- Reserva ese slot: si se ocupa durante la animación, el objeto intruso se dropea y la recompensa ocupa el slot reservado.
-- Recompensas MMOItems por TYPE + ID.
-- Para previews MMOItems se intenta el build de display de MMOItems (`build(true)`), para no copiar el estado/modificadores del ItemStack que el admin metió al editor. La entrega real sigue usando el build normal de MMOItems.
-- Recompensas de cualquier ItemStack custom guardadas como snapshot Base64.
-- Recompensas por uno o varios comandos de consola con `{player}` y PlaceholderAPI opcional.
-- `weight` clásico y `chance` directo por recompensa.
-- Visualizador configurable por crate con `viewer.show-percentages: true/false`.
-- Editor gráfico: `/mdvcrates editor <id>`.
-- Una sola persona puede abrir cada crate a la vez y un jugador no puede abrir dos simultáneamente.
-- Protección ante logout, muerte, teleport, reload/apagado: el ganador se fija y se persiste en `pending.yml` antes de consumir la llave.
-- Idle con Rings 3D, Orbits y Random Points.
-- Cada Ring, Orbit y Random Point tiene `interval-ticks` propio.
-- La succión de opening tiene `spawn-interval-ticks` + `motes-per-spawn`.
-- Las animaciones idle siguen activas durante opening.
-- Nombre/holograma por crate con offset configurable y `hide-during-opening`.
-- La ruleta muestra `xN` en verde cuando una recompensa tiene cantidad mayor a 1.
-- Apertura con partículas de succión hacia la crate, ItemDisplay de ruleta, desaceleración, pausa final configurable, burst y elevación del premio.
-- Protección contra abrir el inventario vanilla, romper, explosiones, pistones y hoppers.
-
-## Probabilidades
-
-### Solo pesos
-
-```yaml
-rewards:
-  comun:
-    type: MMOITEM
-    weight: 70
-  raro:
-    type: MMOITEM
-    weight: 30
-```
-
-Se comporta como siempre: 70/30 relativo.
-
-### Chance directo
-
-```yaml
-rewards:
-  comun:
-    type: MMOITEM
-    chance: 90
-    weight: 1
-  raro:
-    type: MMOITEM
-    chance: 10
-    weight: 1
-```
-
-Si todos usan `chance`, es recomendable que sumen 100.
-
-### Mezcla de chance + weight
-
-Los `chance` explícitos reservan su porcentaje. El porcentaje restante se reparte entre los rewards que solo tienen `weight`.
-
-## Animaciones
-
-### Intervalos idle
-
-```yaml
-rings:
-  ring1:
-    interval-ticks: 4
-```
-
-El Ring se dibuja cada 4 ticks.
-
-```yaml
-orbits:
-  orbit1:
-    interval-ticks: 3
-```
-
-### Random Points
-
-```yaml
-random-points:
-  ambient1:
-    enabled: true
-    particle: SOUL_FIRE_FLAME
-    interval-ticks: 5
-    points-per-spawn: 2
-    shape: SPHERE
-    radius: 1.5
-    vertical-radius: 0.8
-    center-y-offset: 0.5
-    surface-only: false
-    count: 1
-    spread: 0.0
-    extra: 0.0
-```
-
-### Succión opening
-
-```yaml
-suction:
-  enabled: true
-  particle: SOUL_FIRE_FLAME
-  spawn-interval-ticks: 4
-  motes-per-spawn: 1
-  radius: 1.55
-  travel-ticks-min: 8
-  travel-ticks-max: 14
-```
-
-`spawn-interval-ticks: 4` + `motes-per-spawn: 1` equivale a aproximadamente 5 motes nuevos por segundo.
-
-## Nombre de la crate
-
-```yaml
-name-display:
-  enabled: true
-  text: "{display-name}"
-  offset:
-    x: 0.5
-    y: 1.85
-    z: 0.5
-  hide-during-opening: false
-```
+- Click derecho con llave correcta: abre la crate.
+- Click izquierdo: abre el visualizador de recompensas sin consumir llave.
+- Reserva de slot y sistema `pending.yml` para proteger la recompensa durante la animación/logout/reload.
+- Recompensas VANILLA, MMOITEM, ITEM custom y COMMAND.
+- Editor gráfico paginado.
+- Visualizador de premios paginado.
+- Idle Rings/Orbits/Random Points y animaciones de opening.
+- Holograma/nombre configurable por crate.
 
 ## Comandos
 
-- `/mdvcrates create <id>` crea una definición básica.
-- `/mdvcrates editor <id>` abre el editor de recompensas de ítem.
-- `/mdvcrates place <id>` coloca una instancia sobre el bloque que estás mirando.
-- `/mdvcrates remove` elimina la instancia física que estás mirando.
-- `/mdvcrates move <id>` mueve la instancia más cercana de ese ID al bloque sobre el que estás mirando.
-- `/mdvcrates reload` recarga configs y actualiza automáticamente todas las instancias ya colocadas.
+- `/mdvcrates create <id>` crea `plugins/MDVCrates/crates/<id>.yml`.
+- `/mdvcrates editor <id>` abre el editor paginado.
+- `/mdvcrates place <id>` coloca una instancia.
+- `/mdvcrates remove` elimina la instancia mirada.
+- `/mdvcrates move <id>` mueve una instancia cercana.
+- `/mdvcrates reload` recarga configs y crates individuales.
 - `/mdvcrates list` lista crates cargadas.
 
 Permiso admin: `mdvcrates.admin`.
-
-## Editor
-
-El editor no consume los objetos del administrador:
-
-- SHIFT + click sobre un objeto de tu inventario: añade una copia como recompensa.
-- Click izquierdo sobre una recompensa de ítem: la quita del editor.
-- Recompensas COMMAND se representan con su `preview`, pero se editan solo en `crates.yml`.
-- Al cerrar se guarda automáticamente.
-
-Si el objeto añadido es MMOItems, MDVCrates guarda únicamente TYPE + ID. Para el display del editor/ruleta vuelve a construir un preview limpio desde MMOItems; no serializa el ItemStack usado/gastado que metiste al editor.
 
 ## Compilar
 
@@ -177,4 +152,4 @@ También compila con Java 21 + Maven:
 mvn clean package
 ```
 
-El jar sale en `target/MDVCrates-1.1.3.jar`.
+El jar sale en `target/MDVCrates-1.2.0.jar`.
