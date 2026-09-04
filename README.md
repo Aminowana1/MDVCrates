@@ -1,4 +1,4 @@
-# MDVCrates 1.2.3
+# MDVCrates 1.2.5
 
 Plugin de crates físicas para Paper/Purpur 1.21.6, Java 21.
 
@@ -191,7 +191,7 @@ También compila con Java 21 + Maven:
 mvn clean package
 ```
 
-El jar sale en `target/MDVCrates-1.2.2.jar`.
+El jar sale en `target/MDVCrates-1.2.5.jar`.
 
 ## ItemDisplays de crate y órbitas 1.2.2
 

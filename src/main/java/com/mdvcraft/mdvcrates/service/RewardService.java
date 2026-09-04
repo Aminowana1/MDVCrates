@@ -29,11 +29,28 @@ public final class RewardService {
             if (!selectable) continue;
             if (reward.type() == RewardType.COMMAND) {
                 if (!reward.commands().isEmpty()) valid.add(reward);
-            } else if (preview(reward) != null) {
+            } else if (isRewardDefinitionValid(reward)) {
                 valid.add(reward);
             }
         }
         return valid;
+    }
+
+    /**
+     * Valida la definición sin construir previews dinámicos. En especial, un
+     * MMOItem se comprueba consultando su template; no se genera un ItemStack y
+     * por tanto no se tiran modifiers solo por calcular probabilidades.
+     */
+    private boolean isRewardDefinitionValid(Reward reward) {
+        return switch (reward.type()) {
+            case MMOITEM -> mmoItems.exists(reward.mmoItemsType(), reward.mmoItemsId());
+            case VANILLA -> reward.vanillaMaterial() != null && !reward.vanillaMaterial().isAir();
+            case ITEM -> {
+                ItemStack item = reward.storedItem();
+                yield item != null && !item.getType().isAir();
+            }
+            case COMMAND -> !reward.commands().isEmpty();
+        };
     }
 
     /**
@@ -143,6 +160,19 @@ public final class RewardService {
             }
             case COMMAND -> reward.commandPreview();
         };
+    }
+
+    /**
+     * Preview exclusivo del visualizador de recompensas. Solo MMOItems usa una
+     * ruta distinta: template base sin modifier group. El resto queda idéntico.
+     */
+    public ItemStack viewerPreview(Reward reward) {
+        if (reward == null) return null;
+        if (reward.type() == RewardType.MMOITEM) {
+            return mmoItems.getViewerPreviewItem(
+                    reward.mmoItemsType(), reward.mmoItemsId(), Math.min(reward.amount(), 64));
+        }
+        return preview(reward);
     }
 
     public String displayName(Reward reward) {

@@ -1,0 +1,43 @@
+MDVCrates 1.2.5 - Viewer MMOItems sin modifiers
+================================================
+
+ALCANCE DEL PARCHE
+------------------
+Este parche está aislado al visualizador de recompensas y a la validación interna
+que el viewer/probabilidades usa para comprobar que una reward existe.
+
+CAMBIO EN EL VISUALIZADOR
+-------------------------
+- Los MMOItems mostrados en el viewer se construyen desde el MMOItemTemplate base
+  con forDisplay=true ANTES de aplicar cualquier modifier group.
+- Ya no deben verse prefijos/sufijos/calidades aleatorias como Roto, Tosco, Bueno,
+  etc. en armas o armaduras del visualizador.
+- El nombre mostrado por el viewer se toma del preview limpio, por lo que tampoco
+  vuelve a generar el MMOItem solo para averiguar su nombre.
+- Los previews limpios se cachean por TYPE:ID mientras el plugin está cargado.
+
+SPAM DE CONSOLA
+---------------
+La versión anterior llamaba MMOItems#getMMOItem(type,id) al generar previews. Esa
+ruta ya construye el template con modifiers activos; por eso al abrir una crate se
+podían evaluar modifiers con datos inválidos y aparecer muchas veces errores como:
+"Template Data is not Numeric Stat Formula".
+
+Ahora el viewer replica el patrón de GUI de MMOItems:
+  new MMOItemBuilder(template, 0, null, true)
+      .build()
+      .newBuilder()
+      .build(true)
+
+Además validRewards ya no genera un MMOItem para comprobar si existe: consulta el
+MMOItemTemplate directamente. Esto evita tiradas de modifiers indirectas mientras
+se calculan probabilidades/listados.
+
+NO SE CAMBIÓ
+------------
+- Entrega real de recompensas MMOItems.
+- Generación aleatoria de modifier/tier/calidad cuando el jugador GANA el objeto.
+- Selección y probabilidades de recompensas.
+- Ruleta/animación de apertura y su ruta previa de preview.
+- Editor y su ruta previa de preview.
+- Llaves, crates, placements, comandos, partículas, displays o persistencia.

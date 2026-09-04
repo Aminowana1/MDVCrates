@@ -47,7 +47,7 @@ public final class RewardViewerManager {
         int to = Math.min(rewards.size(), from + PAGE_SIZE);
         for (int i = from; i < to; i++) {
             Reward reward = rewards.get(i);
-            ItemStack preview = plugin.rewardService().preview(reward);
+            ItemStack preview = plugin.rewardService().viewerPreview(reward);
             if (preview == null) preview = new ItemStack(Material.BARRIER);
             inv.setItem(i - from, decorate(crate, reward, preview, showPercentages));
         }
@@ -66,7 +66,12 @@ public final class RewardViewerManager {
         ItemStack item = source.clone();
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return item;
-        meta.setDisplayName(plugin.rewardService().displayNameWithAmount(reward));
+        String baseName = reward.displayName() != null && !reward.displayName().isBlank()
+                ? Text.color(reward.displayName())
+                : Text.itemName(source);
+        meta.setDisplayName(reward.amount() > 1
+                ? baseName + Text.color(" &ax" + reward.amount())
+                : baseName);
         List<String> lore = meta.hasLore() && meta.getLore() != null ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
         lore.add("");
         lore.add(Text.color("&6&lRecompensa posible"));
