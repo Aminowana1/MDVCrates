@@ -1,0 +1,77 @@
+# ==========================================================
+# MDVCrates 1.2.2 - Ejemplo de crate individual
+# Archivo: plugins/MDVCrates/crates/caja1.yml
+# ==========================================================
+#
+# Tipos de recompensa:
+#
+# VANILLA:
+# - Para objetos vanilla simples, sin nombre/lore/enchants/componentes custom.
+# - Se guarda solo el material; NO usa Base64.
+#
+# MMOITEM:
+# - Se guarda únicamente TYPE + ID.
+#
+# ITEM:
+# - Solo para ItemStacks no-MMOItems que realmente tengan metadata/componentes
+#   que sea necesario conservar. Estos sí se guardan completos en Base64.
+#
+# COMMAND:
+# - Se edita manualmente en este archivo. preview representa el premio.
+#
+
+enabled: false
+display-name: "&6&lCaja de Ejemplo"
+block-material: CHEST
+
+key:
+  mmoitems-type: LLAVE
+  mmoitems-id: LLAVE_CAJA1
+
+viewer:
+  title: "&8Premios de {display-name}"
+  show-percentages: true
+
+name-display:
+  enabled: true
+  text: "{display-name}"
+  offset:
+    x: 0.5
+    y: 1.85
+    z: 0.5
+  billboard: CENTER
+  shadowed: true
+  see-through: false
+  hide-during-opening: false
+
+rewards:
+  diamantes:
+    type: VANILLA
+    weight: 10.0
+    amount: 5
+    material: DIAMOND
+
+  ejemplo_mmoitem:
+    type: MMOITEM
+    chance: 90.0
+    weight: 50.0
+    amount: 1
+    mmoitems-type: MATERIAL
+    mmoitems-id: PIEDRA_LUNAR
+
+  ejemplo_comando:
+    type: COMMAND
+    chance: 10.0
+    weight: 5.0
+    amount: 1
+    name: "&6Rango especial"
+    commands:
+      - "lp user {player} parent addtemp vip 7d"
+    preview:
+      material: NETHER_STAR
+      name: "&6&lRango especial"
+      lore:
+        - "&7Recompensa ejecutada por consola."
+
+# Puedes copiar default-animations de config.yml aquí y modificarlo
+# para que esta crate tenga partículas/velocidades propias.

@@ -1,0 +1,9 @@
+# ==========================================================
+# MDVCrates 1.2.0 - Ubicaciones persistentes
+# ==========================================================
+#
+# Archivo administrado automáticamente por MDVCrates.
+# No necesitas copiar las ubicaciones a los YAML dentro de crates/.
+# /mdvcrates place, remove y move actualizan este archivo.
+#
+placements: {}

@@ -55,9 +55,10 @@ public final class OpeningSession {
     private boolean rewardDelivered;
     private boolean finished;
     private float yaw;
+    private double maxOpeningDistance;
 
     public OpeningSession(MDVCratesPlugin plugin, OpeningManager manager, Player player, Block block,
-                          CrateDefinition crate, Reward winner, PendingReward pendingReward, RewardService rewards) {
+            CrateDefinition crate, Reward winner, PendingReward pendingReward, RewardService rewards) {
         this.plugin = plugin;
         this.manager = manager;
         this.playerId = player.getUniqueId();
@@ -69,11 +70,20 @@ public final class OpeningSession {
         this.rewards = rewards;
         ConfigurationSection animations = crate.animationSection();
         this.opening = animations == null ? null : animations.getConfigurationSection("opening");
+        this.maxOpeningDistance = plugin.getConfig().getDouble("settings.max-open-distance", 6.0);
     }
 
-    public UUID playerId() { return playerId; }
-    public Player player() { return plugin.getServer().getPlayer(playerId); }
-    public BlockKey blockKey() { return blockKey; }
+    public UUID playerId() {
+        return playerId;
+    }
+
+    public Player player() {
+        return plugin.getServer().getPlayer(playerId);
+    }
+
+    public BlockKey blockKey() {
+        return blockKey;
+    }
 
     public void start() {
         block.getChunk().addPluginChunkTicket(plugin);
@@ -94,7 +104,8 @@ public final class OpeningSession {
     }
 
     private void tick() {
-        if (finished) return;
+        if (finished)
+            return;
         Player player = player();
         if (player == null || !player.isOnline()) {
             interrupt(false);
@@ -104,15 +115,16 @@ public final class OpeningSession {
             interrupt(true);
             return;
         }
-        double maxDistance = plugin.getConfig().getDouble("settings.max-open-distance", 6.0);
-        if (player.getWorld() != block.getWorld() || player.getLocation().distanceSquared(block.getLocation().add(.5, .5, .5)) > maxDistance * maxDistance) {
+        if (player.getWorld() != block.getWorld() || player.getLocation()
+                .distanceSquared(block.getLocation().add(.5, .5, .5)) > Math.pow(maxOpeningDistance, 2)) {
             interrupt(true);
             return;
         }
 
         tick++;
         spinAndBob();
-        if (!burstDone) tickSuction();
+        if (!burstDone)
+            tickSuction();
 
         switch (phase) {
             case ROLL -> tickRoll();
@@ -123,7 +135,8 @@ public final class OpeningSession {
     }
 
     private void tickRoll() {
-        if (tick < nextRollTick) return;
+        if (tick < nextRollTick)
+            return;
         int steps = Math.max(1, rollSteps());
 
         // El último cambio muestra al ganador y entra inmediatamente en la
@@ -150,7 +163,8 @@ public final class OpeningSession {
     private void tickFinalPause() {
         phaseTick++;
         int pause = integer("finish.pause-before-burst-ticks", 8);
-        if (phaseTick < pause) return;
+        if (phaseTick < pause)
+            return;
         burstDone = true;
         motes.clear();
         spawnBurst();
@@ -167,14 +181,17 @@ public final class OpeningSession {
         double t = Math.min(1.0, phaseTick / (double) riseTicks);
         Location target = displayBase().add(0, riseHeight * easeOutCubic(t), 0);
         teleportDisplays(target);
-        if (phaseTick < riseTicks) return;
+        if (phaseTick < riseTicks)
+            return;
 
         if (!rewardDelivered) {
             Player player = player();
             if (player != null && player.isOnline()) {
                 boolean ok = rewards.deliver(player, pendingReward);
-                if (ok) manager.completePending(playerId, pendingReward.entryId());
-                else manager.queue(playerId, pendingReward);
+                if (ok)
+                    manager.completePending(playerId, pendingReward.entryId());
+                else
+                    manager.queue(playerId, pendingReward);
                 rewardDelivered = ok;
                 if (ok) {
                     if (winner.type().name().equals("COMMAND")) {
@@ -196,21 +213,26 @@ public final class OpeningSession {
 
     private void tickClose() {
         phaseTick++;
-        if (phaseTick < integer("finish.close-delay-ticks", 4)) return;
+        if (phaseTick < integer("finish.close-delay-ticks", 4))
+            return;
         closeLid();
         finishCleanup();
     }
 
     public void interrupt(boolean deliverNowIfOnline) {
-        if (finished) return;
+        if (finished)
+            return;
         finished = true;
-        if (task != null) task.cancel();
+        if (task != null)
+            task.cancel();
         if (!rewardDelivered) {
             Player player = player();
             if (deliverNowIfOnline && player != null && player.isOnline()) {
                 boolean ok = rewards.deliver(player, pendingReward);
-                if (ok) manager.completePending(playerId, pendingReward.entryId());
-                else manager.queue(playerId, pendingReward);
+                if (ok)
+                    manager.completePending(playerId, pendingReward.entryId());
+                else
+                    manager.queue(playerId, pendingReward);
                 rewardDelivered = ok;
             } else {
                 manager.queue(playerId, pendingReward);
@@ -219,15 +241,23 @@ public final class OpeningSession {
         motes.clear();
         removeDisplays();
         closeLid();
-        try { block.getChunk().removePluginChunkTicket(plugin); } catch (Throwable ignored) {}
+        try {
+            block.getChunk().removePluginChunkTicket(plugin);
+        } catch (Throwable ignored) {
+        }
         manager.completed(this);
     }
 
     private void finishCleanup() {
-        if (finished) return;
+        if (finished)
+            return;
         finished = true;
-        if (task != null) task.cancel();
-        try { block.getChunk().removePluginChunkTicket(plugin); } catch (Throwable ignored) {}
+        if (task != null)
+            task.cancel();
+        try {
+            block.getChunk().removePluginChunkTicket(plugin);
+        } catch (Throwable ignored) {
+        }
         manager.completed(this);
     }
 
@@ -246,28 +276,33 @@ public final class OpeningSession {
                     new Vector3f(0, 0, 0), new AxisAngle4f(), new Vector3f(scale, scale, scale), new AxisAngle4f()));
         });
         if (bool("roll.show-name", true)) {
-            textDisplay = world.spawn(loc.clone().add(0, dbl("roll.name-offset-y", .55), 0), TextDisplay.class, display -> {
-                display.setPersistent(false);
-                display.setGravity(false);
-                display.setInvulnerable(true);
-                display.setBillboard(Display.Billboard.CENTER);
-                display.setSeeThrough(false);
-                display.setShadowed(true);
-                display.setAlignment(TextDisplay.TextAlignment.CENTER);
-                display.addScoreboardTag("mdvcrates_visual");
-            });
+            textDisplay = world.spawn(loc.clone().add(0, dbl("roll.name-offset-y", .55), 0), TextDisplay.class,
+                    display -> {
+                        display.setPersistent(false);
+                        display.setGravity(false);
+                        display.setInvulnerable(true);
+                        display.setBillboard(Display.Billboard.CENTER);
+                        display.setSeeThrough(false);
+                        display.setShadowed(true);
+                        display.setAlignment(TextDisplay.TextAlignment.CENTER);
+                        display.addScoreboardTag("mdvcrates_visual");
+                    });
         }
     }
 
     private void showReward(Reward reward) {
-        if (reward == null) return;
+        if (reward == null)
+            return;
         ItemStack preview = rewards.preview(reward);
-        if (preview != null && itemDisplay != null) itemDisplay.setItemStack(preview);
-        if (textDisplay != null) textDisplay.setText(rewards.displayNameWithAmount(reward));
+        if (preview != null && itemDisplay != null)
+            itemDisplay.setItemStack(preview);
+        if (textDisplay != null)
+            textDisplay.setText(rewards.displayNameWithAmount(reward));
     }
 
     private void spinAndBob() {
-        if (itemDisplay == null) return;
+        if (itemDisplay == null)
+            return;
         yaw += (float) dbl("roll.spin-deg-per-tick", 10.0);
         Location loc = itemDisplay.getLocation();
         loc.setYaw(yaw);
@@ -279,18 +314,22 @@ public final class OpeningSession {
             itemLoc.setYaw(yaw);
             itemDisplay.teleport(itemLoc);
         }
-        if (textDisplay != null) textDisplay.teleport(itemLoc.clone().add(0, dbl("roll.name-offset-y", .55), 0));
+        if (textDisplay != null)
+            textDisplay.teleport(itemLoc.clone().add(0, dbl("roll.name-offset-y", .55), 0));
     }
 
     private void removeDisplays() {
-        if (itemDisplay != null && itemDisplay.isValid()) itemDisplay.remove();
-        if (textDisplay != null && textDisplay.isValid()) textDisplay.remove();
+        if (itemDisplay != null && itemDisplay.isValid())
+            itemDisplay.remove();
+        if (textDisplay != null && textDisplay.isValid())
+            textDisplay.remove();
         itemDisplay = null;
         textDisplay = null;
     }
 
     private void tickSuction() {
-        if (!bool("suction.enabled", true)) return;
+        if (!bool("suction.enabled", true))
+            return;
         int interval = Math.max(1, integer("suction.spawn-interval-ticks", 1));
         int perSpawn;
         if (opening != null && opening.contains("suction.motes-per-spawn")) {
@@ -322,8 +361,10 @@ public final class OpeningSession {
             double t = Math.min(1.0, mote.age / (double) mote.life);
             double eased = t * t;
             Vector pos = mote.start.clone().multiply(1.0 - eased);
-            particle.spawn(block.getWorld(), center.getX() + pos.getX(), center.getY() + pos.getY(), center.getZ() + pos.getZ());
-            if (mote.age >= mote.life) it.remove();
+            particle.spawn(block.getWorld(), center.getX() + pos.getX(), center.getY() + pos.getY(),
+                    center.getZ() + pos.getZ());
+            if (mote.age >= mote.life)
+                it.remove();
         }
     }
 
@@ -341,9 +382,11 @@ public final class OpeningSession {
     }
 
     private ParticleSpec particle(String prefix, String fallback) {
-        if (opening == null) return ParticleSpec.of(fallback, 1, 0, 0, null);
+        if (opening == null)
+            return ParticleSpec.of(fallback, 1, 0, 0, null);
         ConfigurationSection sec = opening.getConfigurationSection(prefix);
-        if (sec == null) return ParticleSpec.of(fallback, 1, 0, 0, null);
+        if (sec == null)
+            return ParticleSpec.of(fallback, 1, 0, 0, null);
         return ParticleSpec.of(sec.getString("particle", fallback), sec.getInt("count", 1),
                 sec.getDouble("spread", 0), ParticleSpec.configuredSpeed(sec, "particle-speed", "extra", 0.0),
                 sec.getConfigurationSection("data"));
@@ -363,7 +406,9 @@ public final class OpeningSession {
         return Math.max(1L, Math.round(first + (last - first) * curved));
     }
 
-    private int rollSteps() { return Math.max(1, integer("roll.steps", 18)); }
+    private int rollSteps() {
+        return Math.max(1, integer("roll.steps", 18));
+    }
 
     private Location displayBase() {
         return block.getLocation().add(
@@ -377,18 +422,22 @@ public final class OpeningSession {
     }
 
     private void openLid() {
-        if (block.getState() instanceof Lidded lidded) lidded.open();
+        if (block.getState() instanceof Lidded lidded)
+            lidded.open();
     }
 
     private void closeLid() {
         try {
-            if (block.getState() instanceof Lidded lidded) lidded.close();
-        } catch (Throwable ignored) {}
+            if (block.getState() instanceof Lidded lidded)
+                lidded.close();
+        } catch (Throwable ignored) {
+        }
     }
 
     private void playSound(String raw, float volume, float pitch) {
         Player player = player();
-        if (player == null || raw == null || raw.isBlank()) return;
+        if (player == null || raw == null || raw.isBlank())
+            return;
         try {
             Sound sound = Sound.valueOf(raw.toUpperCase(Locale.ROOT));
             player.playSound(block.getLocation(), sound, volume, pitch);
@@ -398,18 +447,38 @@ public final class OpeningSession {
         }
     }
 
-    private String path(String path, String def) { return opening == null ? def : opening.getString(path, def); }
-    private boolean bool(String path, boolean def) { return opening == null ? def : opening.getBoolean(path, def); }
-    private int integer(String path, int def) { return opening == null ? def : opening.getInt(path, def); }
-    private double dbl(String path, double def) { return opening == null ? def : opening.getDouble(path, def); }
-    private static double easeOutCubic(double t) { return 1.0 - Math.pow(1.0 - t, 3); }
+    private String path(String path, String def) {
+        return opening == null ? def : opening.getString(path, def);
+    }
 
-    private enum Phase { ROLL, FINAL_PAUSE, RISE, CLOSE }
+    private boolean bool(String path, boolean def) {
+        return opening == null ? def : opening.getBoolean(path, def);
+    }
+
+    private int integer(String path, int def) {
+        return opening == null ? def : opening.getInt(path, def);
+    }
+
+    private double dbl(String path, double def) {
+        return opening == null ? def : opening.getDouble(path, def);
+    }
+
+    private static double easeOutCubic(double t) {
+        return 1.0 - Math.pow(1.0 - t, 3);
+    }
+
+    private enum Phase {
+        ROLL, FINAL_PAUSE, RISE, CLOSE
+    }
 
     private static final class SuctionMote {
         private final Vector start;
         private final int life;
         private int age;
-        private SuctionMote(Vector start, int life) { this.start = start; this.life = life; }
+
+        private SuctionMote(Vector start, int life) {
+            this.start = start;
+            this.life = life;
+        }
     }
 }

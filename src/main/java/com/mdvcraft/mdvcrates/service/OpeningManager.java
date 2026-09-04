@@ -5,6 +5,8 @@ import com.mdvcraft.mdvcrates.animation.OpeningSession;
 import com.mdvcraft.mdvcrates.config.MessageManager;
 import com.mdvcraft.mdvcrates.hook.MMOItemsHook;
 import com.mdvcraft.mdvcrates.model.*;
+
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -22,7 +24,7 @@ public final class OpeningManager {
     private final Map<UUID, OpeningSession> byPlayer = new HashMap<>();
 
     public OpeningManager(MDVCratesPlugin plugin, MMOItemsHook mmoItems, RewardService rewards,
-                          PendingRewardService pending, MessageManager messages) {
+            PendingRewardService pending, MessageManager messages) {
         this.plugin = plugin;
         this.mmoItems = mmoItems;
         this.rewards = rewards;
@@ -38,9 +40,9 @@ public final class OpeningManager {
         return byPlayer.get(player.getUniqueId());
     }
 
-
     public boolean hasCorrectKey(Player player, CrateDefinition crate) {
-        if (player == null || crate == null || !crate.key().isConfigured()) return false;
+        if (player == null || crate == null || !crate.key().isConfigured())
+            return false;
         ItemStack hand = player.getInventory().getItemInMainHand();
         return hand != null && hand.getType() != Material.AIR
                 && mmoItems.matches(hand, crate.key().mmoItemsType(), crate.key().mmoItemsId());
@@ -82,7 +84,8 @@ public final class OpeningManager {
             messages.send(player, "no-rewards");
             return;
         }
-        if (reserved < 0) reserved = Math.max(0, player.getInventory().getHeldItemSlot());
+        if (reserved < 0)
+            reserved = Math.max(0, player.getInventory().getHeldItemSlot());
 
         PendingReward snapshot = rewards.snapshot(crate.id(), winner, reserved);
 
@@ -100,6 +103,7 @@ public final class OpeningManager {
             byCrate.put(key, session);
             byPlayer.put(player.getUniqueId(), session);
             messages.send(player, "open-start", Map.of("crate", crate.displayName()));
+            broadcastOpening(player, crate);
             session.start();
         } catch (Throwable ex) {
             plugin.getLogger().severe("No se pudo iniciar una apertura: " + ex.getMessage());
@@ -111,8 +115,10 @@ public final class OpeningManager {
 
     private void consumeOneKey(Player player) {
         ItemStack hand = player.getInventory().getItemInMainHand();
-        if (hand.getAmount() <= 1) player.getInventory().setItemInMainHand(null);
-        else hand.setAmount(hand.getAmount() - 1);
+        if (hand.getAmount() <= 1)
+            player.getInventory().setItemInMainHand(null);
+        else
+            hand.setAmount(hand.getAmount() - 1);
         player.updateInventory();
     }
 
@@ -123,7 +129,8 @@ public final class OpeningManager {
 
     public void interrupt(Player player, boolean deliverNowIfOnline) {
         OpeningSession session = byPlayer.get(player.getUniqueId());
-        if (session == null) return;
+        if (session == null)
+            return;
         session.interrupt(deliverNowIfOnline);
     }
 
@@ -144,5 +151,39 @@ public final class OpeningManager {
 
     public PendingRewardService pending() {
         return pending;
+    }
+
+    private void broadcastOpening(Player player, CrateDefinition crate) {
+        BroadcastDefinition broadcast = BroadcastDefinition.of(crate.broadcastSection());
+        if (!broadcast.enabled() || broadcast.text().isEmpty())
+            return;
+
+        String message = broadcast.text()
+                .replace("{player}", player.getName())
+                .replace("{display-name}", crate.displayName());
+
+        // Colorize and broadcast to all players
+        message = com.mdvcraft.mdvcrates.util.Text.color(message);
+        for (Player online : plugin.getServer().getOnlinePlayers()) {
+            messages.send(online, message);
+        }
+
+        // Play sound if enabled
+        if (broadcast.soundEnabled()) {
+            String upperSound = broadcast.sound().toUpperCase(java.util.Locale.ROOT);
+            try {
+                org.bukkit.Sound sound = org.bukkit.Sound.valueOf(upperSound);
+                for (Player online : plugin.getServer().getOnlinePlayers()) {
+                    if (online.getUniqueId().equals(player.getUniqueId())) {
+                        continue;
+                    }
+
+                    online.playSound(online.getLocation(), sound, 1.0f, 1.0f);
+                }
+            } catch (Exception ignored) {
+                // Invalid sound name, skip
+                Bukkit.getConsoleSender().sendMessage("MDVCrates: Sound %s not recognized!".formatted(upperSound));
+            }
+        }
     }
 }
